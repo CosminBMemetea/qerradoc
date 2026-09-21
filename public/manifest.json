@@ -4,8 +4,8 @@
   "description": "Fișă digitală de service pentru utilaje profesionale de curățenie",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1d4ed8",
-  "theme_color": "#1d4ed8",
+  "background_color": "#F7F7F5",
+  "theme_color": "#F7F7F5",
   "orientation": "portrait",
   "lang": "ro",
   "icons": [

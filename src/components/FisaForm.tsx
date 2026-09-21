@@ -3,6 +3,7 @@
 import type { Fisa, TipFisa } from "@/lib/types";
 import { TIPURI } from "@/lib/types";
 import { Field, inputCls, textareaCls } from "./Field";
+import DictateButton from "./DictateButton";
 
 export default function FisaForm({
   fisa,
@@ -25,10 +26,15 @@ export default function FisaForm({
     onChange({ ...fisa, piese });
   };
 
+  const appendField = (key: "reclamatie" | "observatii", text: string) => {
+    const cur = (fisa[key] || "").trim();
+    set(key, cur ? `${cur} ${text}` : text);
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-sm font-medium text-amber-900">
-        ⚠️ Verifică și editează toate câmpurile înainte de salvare. Revizia
+    <div className="space-y-1">
+      <div className="qf-card p-3.5 mb-4 text-sm text-amber-950 bg-amber-50/90 border-amber-200/80">
+        Verifică și editează toate câmpurile înainte de salvare. Revizia
         manuală este obligatorie.
       </div>
 
@@ -39,10 +45,10 @@ export default function FisaForm({
               key={t}
               type="button"
               onClick={() => set("tip", t as TipFisa)}
-              className={`min-h-[48px] rounded-xl border-2 px-2 text-sm font-bold ${
+              className={`min-h-[48px] rounded-xl border px-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 fisa.tip === t
-                  ? "bg-blue-600 text-white border-blue-700"
-                  : "bg-white border-slate-300"
+                  ? "bg-indigo-600 text-white border-indigo-700"
+                  : "bg-white border-stone-200 text-stone-800 active:bg-stone-50"
               }`}
             >
               {t}
@@ -136,10 +142,10 @@ export default function FisaForm({
               key={v}
               type="button"
               onClick={() => set("deplasareDaNu", v)}
-              className={`flex-1 min-h-[48px] rounded-xl border-2 font-bold ${
+              className={`flex-1 min-h-[48px] rounded-xl border font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 fisa.deplasareDaNu === v
-                  ? "bg-blue-600 text-white border-blue-700"
-                  : "bg-white border-slate-300"
+                  ? "bg-indigo-600 text-white border-indigo-700"
+                  : "bg-white border-stone-200 active:bg-stone-50"
               }`}
             >
               {v}
@@ -154,28 +160,33 @@ export default function FisaForm({
           value={fisa.reclamatie}
           onChange={(e) => set("reclamatie", e.target.value)}
         />
+        <div className="mt-2">
+          <DictateButton
+            append
+            onResult={(t) => appendField("reclamatie", t)}
+          />
+        </div>
       </Field>
 
       {fisa.photoDataUrl && (
-        <div className="rounded-xl overflow-hidden border-2 border-slate-200">
+        <div className="rounded-2xl overflow-hidden border border-stone-200 mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={fisa.photoDataUrl}
             alt="Foto utilaj"
-            className="w-full max-h-48 object-contain bg-slate-100"
+            className="w-full max-h-48 object-contain bg-stone-50"
           />
         </div>
       )}
 
-      <div>
-        <h3 className="font-bold text-slate-800 mb-2">Piese și materiale</h3>
+      <div className="mb-4">
+        <h3 className="font-semibold text-stone-800 mb-2 text-sm">
+          Piese și materiale
+        </h3>
         <div className="space-y-3">
           {fisa.piese.slice(0, 15).map((p, idx) => (
-            <div
-              key={p.nr}
-              className="bg-white border border-slate-200 rounded-xl p-3"
-            >
-              <div className="text-xs font-bold text-slate-500 mb-1">
+            <div key={p.nr} className="qf-card p-3">
+              <div className="text-xs font-medium text-stone-400 mb-1.5">
                 Nr. {p.nr}
               </div>
               <input
@@ -211,7 +222,7 @@ export default function FisaForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-1">
         <Field label="Data anunțării defecțiunii">
           <input
             type="date"
@@ -236,6 +247,12 @@ export default function FisaForm({
           value={fisa.observatii}
           onChange={(e) => set("observatii", e.target.value)}
         />
+        <div className="mt-2">
+          <DictateButton
+            append
+            onResult={(t) => appendField("observatii", t)}
+          />
+        </div>
       </Field>
 
       <Field label="Motive înlocuire piese">

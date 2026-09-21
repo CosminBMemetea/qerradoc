@@ -98,38 +98,35 @@ export default function NewFromPhotoPage() {
         onClick={() => inputRef.current?.click()}
         className="!min-h-[72px] mb-4"
       >
-        📷 Alege / captura foto
+        Alege / captura foto
       </BigButton>
 
       {preview ? (
-        <div className="rounded-xl overflow-hidden border-2 border-slate-200 mb-4 bg-slate-100">
+        <div className="rounded-2xl overflow-hidden border border-stone-200 mb-4 bg-stone-50">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={preview}
             alt="Previzualizare"
             className="w-full max-h-64 object-contain"
           />
-          <p className="text-xs text-slate-500 p-2 truncate">{filename}</p>
+          <p className="text-xs text-stone-400 p-2.5 truncate">{filename}</p>
         </div>
       ) : (
-        <div className="rounded-xl border-2 border-dashed border-slate-300 p-8 text-center text-slate-500 mb-4">
+        <div className="rounded-2xl border border-dashed border-stone-300 p-10 text-center text-stone-400 mb-4 text-sm">
           Nicio imagine selectată
         </div>
       )}
 
       <div className="space-y-3">
-        <BigButton
-          onClick={() => create("model")}
-          disabled={!preview || busy}
-        >
-          ✨ Completează din model → Revizie
+        <BigButton onClick={() => create("model")} disabled={!preview || busy}>
+          Completează din model → Revizie
         </BigButton>
         <BigButton
           variant="success"
           onClick={() => create("ocr")}
           disabled={!preview || busy}
         >
-          🪄 Simulează OCR (demo offline)
+          Simulează OCR (demo offline)
         </BigButton>
         <BigButton
           variant="secondary"
@@ -139,7 +136,7 @@ export default function NewFromPhotoPage() {
           Continuă doar cu foto (formular gol)
         </BigButton>
       </div>
-      <p className="text-xs text-slate-500 mt-4">
+      <p className="text-xs text-stone-400 mt-5 leading-relaxed">
         v1: fără API OCR. Foto se salvează pe fișă și apare în PDF. „Simulează
         OCR” umple date demo pentru prezentări pe telefon.
       </p>

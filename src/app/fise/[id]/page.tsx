@@ -30,7 +30,6 @@ function EditInner() {
 
   async function onSave() {
     if (!fisa) return;
-    // Mandatory review: mark reviewed only after explicit save from this screen
     const next = { ...fisa, reviewed: true };
     await saveFisa(next);
     setFisa(next);
@@ -54,41 +53,45 @@ function EditInner() {
   if (!fisa) {
     return (
       <AppShell title="Fișă" backHref="/fise">
-        <p className="text-center text-slate-500 py-10">Se încarcă…</p>
+        <p className="text-center text-stone-500 py-10">Se încarcă…</p>
       </AppShell>
     );
   }
 
   return (
     <AppShell
-      title={mustReview && !fisa.reviewed ? "Revizie obligatorie" : `Fișă ${fisa.nrFisa || ""}`}
+      title={
+        mustReview && !fisa.reviewed
+          ? "Revizie obligatorie"
+          : `Fișă ${fisa.nrFisa || ""}`
+      }
       backHref="/fise"
     >
       <FisaForm fisa={fisa} onChange={setFisa} />
 
-      <div className="sticky bottom-20 mt-6 space-y-3 bg-slate-50/95 pt-3 pb-2 -mx-1 px-1">
+      <div className="sticky bottom-20 mt-6 space-y-3 bg-[#F7F7F5]/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1">
         {saved && (
-          <p className="text-center text-emerald-700 font-semibold text-sm">
-            ✓ Salvat local
+          <p className="text-center text-teal-800 font-medium text-sm">
+            Salvat local
           </p>
         )}
         <BigButton onClick={onSave} variant="success">
-          💾 Salvează fișa
+          Salvează fișa
         </BigButton>
         <BigButton
           href={`/fise/${fisa.id}/pdf`}
           disabled={!fisa.reviewed && mustReview}
           variant="primary"
         >
-          📄 PDF — previzualizare / descărcare
+          PDF — previzualizare / descărcare
         </BigButton>
-        {(!fisa.reviewed && mustReview) && (
-          <p className="text-xs text-amber-800 text-center">
+        {!fisa.reviewed && mustReview && (
+          <p className="text-xs text-amber-900 text-center">
             Salvează mai întâi după revizie ca să deblochezi PDF-ul.
           </p>
         )}
         <BigButton variant="danger" onClick={onDelete}>
-          🗑️ Șterge fișa
+          Șterge fișa
         </BigButton>
       </div>
     </AppShell>
@@ -99,7 +102,7 @@ export default function EditFisaPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-dvh flex items-center justify-center">
+        <div className="min-h-dvh flex items-center justify-center bg-[#F7F7F5] text-stone-500">
           Se încarcă…
         </div>
       }

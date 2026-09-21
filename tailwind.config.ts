@@ -11,6 +11,14 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        accent: {
+          DEFAULT: "#4f46e5",
+          soft: "#eef2ff",
+          dark: "#4338ca",
+        },
+      },
+      borderRadius: {
+        "2xl": "1rem",
       },
     },
   },

@@ -61,7 +61,7 @@ export default function PdfPage() {
   if (!fisa || !settings) {
     return (
       <AppShell title="PDF" backHref={`/fise/${id}`}>
-        <p className="text-center py-10 text-slate-500">Se încarcă…</p>
+        <p className="text-center py-10 text-stone-500">Se încarcă…</p>
       </AppShell>
     );
   }
@@ -69,45 +69,45 @@ export default function PdfPage() {
   return (
     <AppShell title="PDF fișă" backHref={`/fise/${id}`}>
       {!fisa.reviewed && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-3 text-sm mb-4 text-amber-900 font-medium">
-          ⚠️ Fișa nu a fost încă salvată după revizie. Poți genera PDF, dar
+        <div className="qf-card p-3.5 text-sm mb-4 text-amber-950 bg-amber-50/90 border-amber-200/80">
+          Fișa nu a fost încă salvată după revizie. Poți genera PDF, dar
           recomandăm să salvezi mai întâi din ecranul de editare.
         </div>
       )}
-      <div className="bg-white rounded-xl border-2 border-slate-200 p-4 mb-4">
-        <p className="text-xs font-bold text-slate-500 uppercase mb-1">
+      <div className="qf-card p-5 mb-5">
+        <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 mb-1">
           Previzualizare sumar
         </p>
-        <h2 className="text-lg font-bold text-blue-800">
+        <h2 className="text-lg font-semibold text-stone-900">
           {settings.companyName}
         </h2>
-        <p className="font-semibold mt-2">
+        <p className="font-medium mt-2 text-stone-800">
           Fișă de {fisa.tip} · Nr. {fisa.nrFisa || "—"}
         </p>
-        <dl className="mt-3 space-y-1 text-sm">
+        <dl className="mt-3 space-y-1.5 text-sm">
           <div>
-            <span className="text-slate-500">Client: </span>
+            <span className="text-stone-400">Client: </span>
             {fisa.client || "—"}
           </div>
           <div>
-            <span className="text-slate-500">Locație: </span>
+            <span className="text-stone-400">Locație: </span>
             {fisa.locatie || "—"}
           </div>
           <div>
-            <span className="text-slate-500">Utilaj: </span>
+            <span className="text-stone-400">Utilaj: </span>
             {fisa.modelUtilaj || "—"} / {fisa.serie || "—"}
           </div>
           <div>
-            <span className="text-slate-500">Manoperă: </span>
+            <span className="text-stone-400">Manoperă: </span>
             {fisa.manoperaOre || "—"} h · Deplasare: {fisa.deplasareKm || "—"}{" "}
             km ({fisa.deplasareDaNu || "—"})
           </div>
           <div>
-            <span className="text-slate-500">Reclamație: </span>
+            <span className="text-stone-400">Reclamație: </span>
             {fisa.reclamatie || "—"}
           </div>
           <div>
-            <span className="text-slate-500">Piese: </span>
+            <span className="text-stone-400">Piese: </span>
             {fisa.piese.filter((p) => p.denumire).length} linii
           </div>
           {fisa.photoDataUrl && (
@@ -116,7 +116,7 @@ export default function PdfPage() {
               <img
                 src={fisa.photoDataUrl}
                 alt="Foto"
-                className="w-full max-h-40 object-contain rounded-lg bg-slate-50"
+                className="w-full max-h-40 object-contain rounded-xl bg-stone-50"
               />
             </div>
           )}
@@ -125,14 +125,14 @@ export default function PdfPage() {
 
       <div className="space-y-3">
         <BigButton onClick={onDownload} disabled={busy}>
-          ⬇️ Descarcă PDF
+          Descarcă PDF
         </BigButton>
         <BigButton variant="secondary" onClick={onShare} disabled={busy}>
-          📤 Partajează PDF
+          Partajează PDF
         </BigButton>
       </div>
       {msg && (
-        <p className="text-center text-sm font-medium text-emerald-700 mt-3">
+        <p className="text-center text-sm font-medium text-teal-800 mt-3">
           {msg}
         </p>
       )}

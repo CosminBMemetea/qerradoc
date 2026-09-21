@@ -1,18 +1,28 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
+import DictateButton from "@/components/DictateButton";
 import { Field, textareaCls } from "@/components/Field";
 import { emptyFisa } from "@/lib/types";
 import { parseWhatsAppText, SAMPLE_WHATSAPP } from "@/lib/parse-text";
 import { saveFisa, getSession } from "@/lib/db";
 
-export default function NewFromTextPage() {
+function TextInner() {
   const router = useRouter();
+  const search = useSearchParams();
+  const autoDictate = search.get("dictate") === "1";
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const onDictate = useCallback((chunk: string) => {
+    setText((prev) => {
+      const cur = prev.trim();
+      return cur ? `${cur} ${chunk}` : chunk;
+    });
+  }, []);
 
   async function go(parse: boolean) {
     setBusy(true);
@@ -44,24 +54,43 @@ export default function NewFromTextPage() {
           placeholder="Ex: client Hotel… utilaj Kärcher… serie…"
         />
       </Field>
+
+      <DictateButton
+        append
+        autoStart={autoDictate}
+        onResult={onDictate}
+        className="mb-5"
+      />
+
       <div className="space-y-3">
-        <BigButton
-          onClick={() => go(true)}
-          disabled={busy || !text.trim()}
-        >
-          ✨ Completează automat → Revizie
+        <BigButton onClick={() => go(true)} disabled={busy || !text.trim()}>
+          Completează automat → Revizie
         </BigButton>
         <BigButton
           variant="secondary"
           onClick={() => setText(SAMPLE_WHATSAPP)}
         >
-          📋 Încarcă text exemplu
+          Încarcă text exemplu
         </BigButton>
       </div>
-      <p className="text-xs text-slate-500 mt-4">
+      <p className="text-xs text-stone-400 mt-5 leading-relaxed">
         Parser heuristic local (fără cloud). Apoi editezi manual — nu poți sări
         peste revizie.
       </p>
     </AppShell>
+  );
+}
+
+export default function NewFromTextPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell title="Din text" backHref="/fise/nou">
+          <p className="text-center text-stone-500 py-10">Se încarcă…</p>
+        </AppShell>
+      }
+    >
+      <TextInner />
+    </Suspense>
   );
 }

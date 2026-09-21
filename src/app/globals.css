@@ -4,6 +4,12 @@
 
 :root {
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --background: #f7f7f5;
+  --foreground: #18181b;
+  --accent: #4f46e5;
+  --accent-soft: #eef2ff;
+  --card: #ffffff;
+  --border: #e7e5e4;
 }
 
 html,
@@ -15,7 +21,8 @@ body {
 
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  background: #e2e8f0;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 .safe-bottom {
@@ -29,4 +36,9 @@ input,
 select,
 textarea {
   touch-action: manipulation;
+}
+
+/* Soft card surface used across screens */
+.qf-card {
+  @apply bg-white rounded-2xl border border-stone-200/80 shadow-sm;
 }

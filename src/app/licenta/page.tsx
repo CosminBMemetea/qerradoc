@@ -25,7 +25,6 @@ export default function LicentaPage() {
 
   async function activate() {
     const trimmed = key.trim().toUpperCase();
-    // Stub: any key with length >= 8 activates; "DEMO-QUERRA" always works
     if (trimmed.length < 8 && trimmed !== "DEMO") {
       setMsg("Cheia trebuie să aibă cel puțin 8 caractere (sau DEMO).");
       return;
@@ -55,24 +54,25 @@ export default function LicentaPage() {
 
   return (
     <AppShell title="Licență">
-      <div className="bg-white rounded-xl border-2 border-slate-200 p-4 mb-4">
-        <p className="text-sm text-slate-600">
-          Activare firmă · ~<strong>200 EUR / an</strong> (~999 RON/an) · până
-          la ~<strong>5 tehnicieni</strong>
+      <div className="qf-card p-5 mb-5">
+        <p className="text-sm text-stone-600 leading-relaxed">
+          Activare firmă · <strong className="text-stone-900">~200 EUR / an</strong>{" "}
+          (~999 RON) · până la{" "}
+          <strong className="text-stone-900">~5 tehnicieni</strong>
         </p>
         <div
-          className={`mt-3 rounded-lg px-3 py-2 font-bold text-sm ${
+          className={`mt-4 rounded-xl px-3.5 py-2.5 font-medium text-sm ${
             lic.activated
-              ? "bg-emerald-100 text-emerald-800"
-              : "bg-amber-100 text-amber-900"
+              ? "bg-teal-50 text-teal-900 border border-teal-200/80"
+              : "bg-amber-50 text-amber-950 border border-amber-200/80"
           }`}
         >
           {lic.activated
-            ? `✓ Activă · cheie ${lic.licenseKey} · max ${lic.maxUsers} useri`
-            : "○ Neactivată — poți demoua aplicația; activarea e stub"}
+            ? `Activă · cheie ${lic.licenseKey} · max ${lic.maxUsers} useri`
+            : "Neactivată — poți demoua aplicația; activarea e stub"}
         </div>
         {lic.activatedAt && (
-          <p className="text-xs text-slate-500 mt-2">
+          <p className="text-xs text-stone-400 mt-3">
             Activată:{" "}
             {new Date(lic.activatedAt).toLocaleString("ro-RO", {
               timeZone: "Europe/Bucharest",
@@ -92,7 +92,7 @@ export default function LicentaPage() {
       </Field>
 
       <div className="space-y-3">
-        <BigButton onClick={activate}>🔑 Activează licența</BigButton>
+        <BigButton onClick={activate}>Activează licența</BigButton>
         {lic.activated && (
           <BigButton variant="secondary" onClick={deactivate}>
             Dezactivează (test)
@@ -100,11 +100,11 @@ export default function LicentaPage() {
         )}
       </div>
       {msg && (
-        <p className="text-center text-sm font-medium text-blue-800 mt-3">
+        <p className="text-center text-sm font-medium text-indigo-700 mt-3">
           {msg}
         </p>
       )}
-      <p className="text-xs text-slate-500 mt-6">
+      <p className="text-xs text-stone-400 mt-6 leading-relaxed">
         Stub: nu există server de validare. Pentru producție se va conecta un
         endpoint de activare. Fără SoftBill / e-Factura / OAK.
       </p>

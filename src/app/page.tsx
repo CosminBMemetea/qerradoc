@@ -12,8 +12,8 @@ export default function Home() {
     });
   }, [router]);
   return (
-    <div className="min-h-dvh flex items-center justify-center bg-blue-700 text-white">
-      <p className="text-lg font-bold">Se încarcă Querra Fișă…</p>
+    <div className="min-h-dvh flex items-center justify-center bg-[#F7F7F5] text-stone-600">
+      <p className="text-base font-medium">Se încarcă Querra Fișă…</p>
     </div>
   );
 }
