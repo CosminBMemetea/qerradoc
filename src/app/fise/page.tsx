@@ -6,13 +6,19 @@ import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { listFise, getSession } from "@/lib/db";
 import { seedDemoFisa } from "@/lib/seed";
-import type { Fisa } from "@/lib/types";
+import {
+  seedDemoCuratenie,
+  seedDemoTamplarie,
+  seedDemoStoma,
+} from "@/lib/demos";
+import type { Fisa, TemplateKind } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
 export default function FiseListPage() {
   const { t } = useI18n();
   const [fise, setFise] = useState<Fisa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
 
   async function reload() {
     setLoading(true);
@@ -25,10 +31,29 @@ export default function FiseListPage() {
     reload();
   }, []);
 
+  async function withTech(
+    fn: (name: string) => Promise<unknown>
+  ) {
+    setSeeding(true);
+    try {
+      const s = await getSession();
+      await fn(s?.technicianName || "Ion Popescu");
+      await reload();
+    } finally {
+      setSeeding(false);
+    }
+  }
+
   async function onSeed() {
-    const s = await getSession();
-    await seedDemoFisa(s?.technicianName || "Ion Popescu");
-    await reload();
+    await withTech((name) => seedDemoFisa(name));
+  }
+
+  async function onDemo(kind: TemplateKind) {
+    await withTech((name) => {
+      if (kind === "curatenie") return seedDemoCuratenie(name);
+      if (kind === "tamplarie") return seedDemoTamplarie(name);
+      return seedDemoStoma(name);
+    });
   }
 
   return (
@@ -37,9 +62,38 @@ export default function FiseListPage() {
         <BigButton href="/fise/nou" variant="primary">
           {t("fise.new")}
         </BigButton>
-        <BigButton variant="secondary" onClick={onSeed}>
+        <BigButton variant="secondary" onClick={onSeed} disabled={seeding}>
           {t("fise.seed")}
         </BigButton>
+      </div>
+
+      <div className="mb-6">
+        <h2 className="text-sm font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500 mb-3">
+          {t("fise.demosTitle")}
+        </h2>
+        <div className="space-y-2.5">
+          <BigButton
+            variant="secondary"
+            onClick={() => onDemo("curatenie")}
+            disabled={seeding}
+          >
+            {t("fise.demoCuratenie")}
+          </BigButton>
+          <BigButton
+            variant="secondary"
+            onClick={() => onDemo("tamplarie")}
+            disabled={seeding}
+          >
+            {t("fise.demoTamplarie")}
+          </BigButton>
+          <BigButton
+            variant="secondary"
+            onClick={() => onDemo("stoma")}
+            disabled={seeding}
+          >
+            {t("fise.demoStoma")}
+          </BigButton>
+        </div>
       </div>
 
       {loading ? (
@@ -72,6 +126,11 @@ export default function FiseListPage() {
                     <div className="text-xs text-stone-400 dark:text-stone-500 truncate mt-0.5">
                       {f.modelUtilaj || "—"} · {f.serie || t("fise.noSerie")}
                     </div>
+                    {f.templateKind && (
+                      <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60">
+                        {t(`fise.badge.${f.templateKind}`)}
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-stone-400 dark:text-stone-500 whitespace-nowrap pt-0.5">
                     {f.dataInterventiei || f.updatedAt.slice(0, 10)}

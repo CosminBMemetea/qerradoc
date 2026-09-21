@@ -140,6 +140,14 @@ export default function PdfPage() {
               />
             </div>
           )}
+          {fisa.audioNoteDataUrl && (
+            <div className="pt-3">
+              <p className="text-stone-400 dark:text-stone-500 mb-1.5">
+                {t("pdf.audioNote")}
+              </p>
+              <audio controls src={fisa.audioNoteDataUrl} className="w-full" />
+            </div>
+          )}
         </dl>
       </div>
 

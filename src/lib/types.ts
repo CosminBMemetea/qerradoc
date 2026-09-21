@@ -1,5 +1,7 @@
 export type TipFisa = "Constatare" | "Reparație" | "Revizie" | "Punere în funcțiune";
 
+export type TemplateKind = "curatenie" | "tamplarie" | "stoma";
+
 export interface Piesa {
   nr: number;
   denumire: string;
@@ -30,6 +32,10 @@ export interface Fisa {
   semnaturaClient: string;
   semnaturaTehnician: string;
   photoDataUrl?: string;
+  /** Optional voice note (MediaRecorder data URL) when speech-to-text fails */
+  audioNoteDataUrl?: string;
+  /** Demo / industry template badge on list */
+  templateKind?: TemplateKind;
   createdAt: string;
   updatedAt: string;
   reviewed: boolean;

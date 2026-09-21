@@ -18,6 +18,13 @@ export const SPEECH_LANG: Record<Locale, string> = {
   pl: "pl-PL",
 };
 
+/** BCP-47 for <input type="date"> / native pickers */
+export const DATE_LANG: Record<Locale, string> = {
+  ro: "ro-RO",
+  en: "en-GB",
+  pl: "pl-PL",
+};
+
 export const LOCALE_LABELS: Record<Locale, string> = {
   ro: "Română",
   en: "English",
@@ -204,6 +211,22 @@ const ro: Dict = {
   "dictate.service": "Serviciul de dictare nu e disponibil.",
   "dictate.appendHint": "Textul se adaugă la finalul câmpului",
 
+  "dictate.networkRetry": "Rețea — reîncerc o dată…",
+  "dictate.networkHint": "Dictarea necesită Chrome, internet și microfon. Poți înregistra o notă vocală mai jos.",
+  "dictate.tapAgain": "Atinge din nou microfonul",
+  "dictate.voiceNote": "Înregistrează notă vocală",
+  "dictate.voiceNoteStop": "Oprește înregistrarea",
+  "dictate.voiceNoteRecording": "Se înregistrează nota vocală…",
+  "dictate.voiceNoteSaved": "Notă vocală salvată pe fișă.",
+  "form.audioNote": "Notă vocală",
+  "pdf.audioNote": "Notă vocală",
+  "fise.demosTitle": "Încarcă demo real",
+  "fise.demoCuratenie": "Utilaje curățenie",
+  "fise.demoTamplarie": "Tâmplărie PVC / lemn",
+  "fise.demoStoma": "Cabinet stomatologic",
+  "fise.badge.curatenie": "Curățenie",
+  "fise.badge.tamplarie": "Tâmplărie",
+  "fise.badge.stoma": "Stoma",
   "offline.title": "Offline",
   "offline.desc":
     "Nu există conexiune. Fișele salvate local rămân disponibile după reconectare.",
@@ -382,6 +405,22 @@ const en: Dict = {
   "dictate.service": "Dictation service is not available.",
   "dictate.appendHint": "Text is appended to the end of the field",
 
+  "dictate.networkRetry": "Network — retrying once…",
+  "dictate.networkHint": "Dictation needs Chrome, internet and a microphone. You can record a voice note below.",
+  "dictate.tapAgain": "Tap the microphone again",
+  "dictate.voiceNote": "Record voice note",
+  "dictate.voiceNoteStop": "Stop recording",
+  "dictate.voiceNoteRecording": "Recording voice note…",
+  "dictate.voiceNoteSaved": "Voice note saved on the sheet.",
+  "form.audioNote": "Voice note",
+  "pdf.audioNote": "Voice note",
+  "fise.demosTitle": "Load real demo",
+  "fise.demoCuratenie": "Cleaning equipment",
+  "fise.demoTamplarie": "PVC / wood joinery",
+  "fise.demoStoma": "Dental clinic",
+  "fise.badge.curatenie": "Cleaning",
+  "fise.badge.tamplarie": "Joinery",
+  "fise.badge.stoma": "Dental",
   "offline.title": "Offline",
   "offline.desc":
     "No connection. Locally saved sheets remain available after reconnecting.",
@@ -562,6 +601,22 @@ const pl: Dict = {
   "dictate.service": "Usługa dyktowania niedostępna.",
   "dictate.appendHint": "Tekst jest dodawany na końcu pola",
 
+  "dictate.networkRetry": "Sieć — ponawiam raz…",
+  "dictate.networkHint": "Dyktowanie wymaga Chrome, internetu i mikrofonu. Możesz nagrać notatkę głosową poniżej.",
+  "dictate.tapAgain": "Dotknij mikrofonu ponownie",
+  "dictate.voiceNote": "Nagraj notatkę głosową",
+  "dictate.voiceNoteStop": "Zatrzymaj nagrywanie",
+  "dictate.voiceNoteRecording": "Nagrywanie notatki głosowej…",
+  "dictate.voiceNoteSaved": "Notatka głosowa zapisana na karcie.",
+  "form.audioNote": "Notatka głosowa",
+  "pdf.audioNote": "Notatka głosowa",
+  "fise.demosTitle": "Wczytaj demo realne",
+  "fise.demoCuratenie": "Sprzęt czyszczący",
+  "fise.demoTamplarie": "Stolarka PVC / drewno",
+  "fise.demoStoma": "Gabinet stomatologiczny",
+  "fise.badge.curatenie": "Czyszczenie",
+  "fise.badge.tamplarie": "Stolarka",
+  "fise.badge.stoma": "Stoma",
   "offline.title": "Offline",
   "offline.desc":
     "Brak połączenia. Lokalnie zapisane karty pozostaną dostępne po ponownym połączeniu.",
@@ -586,6 +641,7 @@ type I18nCtx = {
   setLocale: (l: Locale) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
   speechLang: string;
+  dateLang: string;
 };
 
 const Ctx = createContext<I18nCtx | null>(null);
@@ -608,6 +664,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }
     if (typeof document !== "undefined") {
       document.documentElement.lang = locale;
+      document.documentElement.setAttribute("lang", locale);
     }
   }, [locale, ready]);
 
@@ -633,6 +690,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       setLocale,
       t,
       speechLang: SPEECH_LANG[locale],
+      dateLang: DATE_LANG[locale],
     }),
     [locale, setLocale, t]
   );

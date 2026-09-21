@@ -13,7 +13,7 @@ export default function FisaForm({
   fisa: Fisa;
   onChange: (f: Fisa) => void;
 }) {
-  const { t } = useI18n();
+  const { t, dateLang } = useI18n();
   const set = <K extends keyof Fisa>(key: K, value: Fisa[K]) =>
     onChange({ ...fisa, [key]: value });
 
@@ -170,6 +170,7 @@ export default function FisaForm({
           <DictateButton
             append
             onResult={(txt) => appendField("reclamatie", txt)}
+            onAudioNote={(dataUrl) => set("audioNoteDataUrl", dataUrl)}
           />
         </div>
       </Field>
@@ -182,6 +183,15 @@ export default function FisaForm({
             alt={t("form.photoAlt")}
             className="w-full max-h-48 object-contain bg-stone-50 dark:bg-stone-900"
           />
+        </div>
+      )}
+
+      {fisa.audioNoteDataUrl && (
+        <div className="qf-card p-3 mb-4">
+          <p className="text-sm font-medium text-stone-700 dark:text-stone-300 mb-2">
+            {t("form.audioNote")}
+          </p>
+          <audio controls src={fisa.audioNoteDataUrl} className="w-full" />
         </div>
       )}
 
@@ -232,6 +242,7 @@ export default function FisaForm({
         <Field label={t("form.dataAnuntarii")}>
           <input
             type="date"
+            lang={dateLang}
             className={inputCls}
             value={fisa.dataAnuntarii}
             onChange={(e) => set("dataAnuntarii", e.target.value)}
@@ -240,6 +251,7 @@ export default function FisaForm({
         <Field label={t("form.dataInterventiei")}>
           <input
             type="date"
+            lang={dateLang}
             className={inputCls}
             value={fisa.dataInterventiei}
             onChange={(e) => set("dataInterventiei", e.target.value)}
@@ -257,6 +269,7 @@ export default function FisaForm({
           <DictateButton
             append
             onResult={(txt) => appendField("observatii", txt)}
+            onAudioNote={(dataUrl) => set("audioNoteDataUrl", dataUrl)}
           />
         </div>
       </Field>

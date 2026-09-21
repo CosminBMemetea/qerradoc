@@ -34,20 +34,29 @@ function getSpeechRecognition(): SpeechRecognitionCtor | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-const FATAL_ERRORS = new Set([
-  "not-allowed",
-  "service-not-allowed",
-  "network",
-]);
+const MAX_AUTO_RESTARTS = 8;
+const RESTART_DELAY_MIN_MS = 800;
+const RESTART_DELAY_MAX_MS = 1200;
+const NETWORK_RETRY_MS = 1500;
+
+function restartDelayMs() {
+  return (
+    RESTART_DELAY_MIN_MS +
+    Math.floor(Math.random() * (RESTART_DELAY_MAX_MS - RESTART_DELAY_MIN_MS + 1))
+  );
+}
 
 export default function DictateButton({
   onResult,
+  onAudioNote,
   append = false,
   autoStart = false,
   className = "",
   lang,
 }: {
   onResult: (text: string) => void;
+  /** Optional voice-note fallback (MediaRecorder data URL). */
+  onAudioNote?: (dataUrl: string, mime: string) => void;
   append?: boolean;
   autoStart?: boolean;
   className?: string;
@@ -61,12 +70,25 @@ export default function DictateButton({
   const [unsupported, setUnsupported] = useState(false);
   const [hint, setHint] = useState("");
   const [interim, setInterim] = useState("");
+  const [showVoiceNote, setShowVoiceNote] = useState(false);
+  const [recordingNote, setRecordingNote] = useState(false);
 
   const recRef = useRef<SpeechRecognitionLike | null>(null);
   const onResultRef = useRef(onResult);
   const wantListeningRef = useRef(false);
   const restartTimerRef = useRef<number | null>(null);
+  const networkRetryTimerRef = useRef<number | null>(null);
   const langRef = useRef(effectiveLang);
+  const restartCountRef = useRef(0);
+  const gotFinalRef = useRef(false);
+  const networkFailCountRef = useRef(0);
+  const networkRetryPendingRef = useRef(false);
+  const startingRef = useRef(false);
+  const startRecognitionRef = useRef<() => void>(() => {});
+  const tRef = useRef(t);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     onResultRef.current = onResult;
@@ -76,6 +98,18 @@ export default function DictateButton({
     langRef.current = effectiveLang;
   }, [effectiveLang]);
 
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
+
+  useEffect(() => {
+    if (!getSpeechRecognition()) {
+      setUnsupported(true);
+      setShowVoiceNote(true);
+      setHint(t("dictate.unsupported"));
+    }
+  }, [t]);
+
   const clearRestartTimer = () => {
     if (restartTimerRef.current != null) {
       window.clearTimeout(restartTimerRef.current);
@@ -83,132 +117,186 @@ export default function DictateButton({
     }
   };
 
-  const stop = useCallback(() => {
-    wantListeningRef.current = false;
-    clearRestartTimer();
-    setInterim("");
+  const clearNetworkRetryTimer = () => {
+    if (networkRetryTimerRef.current != null) {
+      window.clearTimeout(networkRetryTimerRef.current);
+      networkRetryTimerRef.current = null;
+    }
+  };
+
+  const stopRecognitionSoft = () => {
     try {
       recRef.current?.stop();
     } catch {
       /* ignore */
     }
+  };
+
+  const stop = useCallback(() => {
+    wantListeningRef.current = false;
+    networkRetryPendingRef.current = false;
+    clearRestartTimer();
+    clearNetworkRetryTimer();
+    setInterim("");
+    stopRecognitionSoft();
     setListening(false);
+    startingRef.current = false;
   }, []);
 
-  const startRecognition = useCallback(() => {
-    const Ctor = getSpeechRecognition();
-    if (!Ctor) {
-      setUnsupported(true);
-      setHint(t("dictate.unsupported"));
-      wantListeningRef.current = false;
-      setListening(false);
-      return;
-    }
-    setUnsupported(false);
-
-    try {
-      // Abort any previous instance before creating a new one
-      try {
-        recRef.current?.abort();
-      } catch {
-        /* ignore */
+  useEffect(() => {
+    startRecognitionRef.current = () => {
+      const Ctor = getSpeechRecognition();
+      if (!Ctor) {
+        setUnsupported(true);
+        setShowVoiceNote(true);
+        setHint(tRef.current("dictate.unsupported"));
+        wantListeningRef.current = false;
+        setListening(false);
+        return;
       }
+      setUnsupported(false);
 
-      const rec = new Ctor();
-      rec.lang = langRef.current;
-      rec.continuous = true;
-      rec.interimResults = true;
+      if (startingRef.current) return;
+      startingRef.current = true;
 
-      rec.onresult = (ev) => {
-        let finalChunk = "";
-        let interimChunk = "";
-        for (let i = ev.resultIndex; i < ev.results.length; i++) {
-          const r = ev.results[i];
-          const piece = r[0]?.transcript || "";
-          if (r.isFinal) finalChunk += piece;
-          else interimChunk += piece;
-        }
-        finalChunk = finalChunk.trim();
-        if (finalChunk) {
-          onResultRef.current(finalChunk);
-          setInterim("");
-        } else {
-          setInterim(interimChunk.trim());
-        }
-      };
+      try {
+        // Soft-stop previous instance only — never abort()+start in a tight loop
+        stopRecognitionSoft();
 
-      rec.onerror = (ev) => {
-        const err = ev.error;
-        // Ignore benign ends — Chrome fires these often during continuous listen
-        if (err === "no-speech" || err === "aborted") {
-          return;
-        }
-        if (err === "not-allowed") {
-          wantListeningRef.current = false;
-          setHint(t("dictate.micDenied"));
-          setListening(false);
-          setInterim("");
-          return;
-        }
-        if (err === "service-not-allowed") {
-          wantListeningRef.current = false;
-          setHint(t("dictate.service"));
-          setListening(false);
-          setInterim("");
-          return;
-        }
-        if (err === "network") {
-          wantListeningRef.current = false;
-          setHint(t("dictate.network"));
-          setListening(false);
-          setInterim("");
-          return;
-        }
-        // Other non-fatal errors: keep wanting listen; onend will restart
-        if (FATAL_ERRORS.has(err)) {
-          wantListeningRef.current = false;
-          setListening(false);
-          setInterim("");
-        }
-      };
+        const rec = new Ctor();
+        rec.lang = langRef.current;
+        // Short utterance mode — avoids Chrome continuous/network hammering
+        rec.continuous = false;
+        rec.interimResults = true;
 
-      rec.onend = () => {
-        // Chrome drops recognition after silence — auto-restart if user still wants it
-        if (wantListeningRef.current) {
+        rec.onresult = (ev) => {
+          let finalChunk = "";
+          let interimChunk = "";
+          for (let i = ev.resultIndex; i < ev.results.length; i++) {
+            const r = ev.results[i];
+            const piece = r[0]?.transcript || "";
+            if (r.isFinal) finalChunk += piece;
+            else interimChunk += piece;
+          }
+          finalChunk = finalChunk.trim();
+          if (finalChunk) {
+            gotFinalRef.current = true;
+            networkFailCountRef.current = 0;
+            onResultRef.current(finalChunk);
+            setInterim("");
+          } else {
+            setInterim(interimChunk.trim());
+          }
+        };
+
+        rec.onerror = (ev) => {
+          const err = ev.error;
+          if (err === "no-speech" || err === "aborted") {
+            return;
+          }
+          if (err === "not-allowed") {
+            wantListeningRef.current = false;
+            clearRestartTimer();
+            clearNetworkRetryTimer();
+            setHint(tRef.current("dictate.micDenied"));
+            setShowVoiceNote(true);
+            setListening(false);
+            setInterim("");
+            return;
+          }
+          if (err === "service-not-allowed") {
+            wantListeningRef.current = false;
+            clearRestartTimer();
+            clearNetworkRetryTimer();
+            setHint(tRef.current("dictate.service"));
+            setShowVoiceNote(true);
+            setListening(false);
+            setInterim("");
+            return;
+          }
+          if (err === "network") {
+            networkFailCountRef.current += 1;
+            if (networkFailCountRef.current === 1 && wantListeningRef.current) {
+              clearNetworkRetryTimer();
+              clearRestartTimer();
+              networkRetryPendingRef.current = true;
+              setHint(tRef.current("dictate.networkRetry"));
+              networkRetryTimerRef.current = window.setTimeout(() => {
+                networkRetryPendingRef.current = false;
+                if (!wantListeningRef.current) return;
+                startingRef.current = false;
+                stopRecognitionSoft();
+                startRecognitionRef.current();
+              }, NETWORK_RETRY_MS);
+              return;
+            }
+            wantListeningRef.current = false;
+            networkRetryPendingRef.current = false;
+            clearRestartTimer();
+            clearNetworkRetryTimer();
+            setHint(tRef.current("dictate.networkHint"));
+            setShowVoiceNote(true);
+            setListening(false);
+            setInterim("");
+            stopRecognitionSoft();
+            return;
+          }
+        };
+
+        rec.onend = () => {
+          startingRef.current = false;
+          if (!wantListeningRef.current) {
+            setListening(false);
+            setInterim("");
+            return;
+          }
+          // Network retry owns the next start — do not double-restart from onend
+          if (networkRetryPendingRef.current) {
+            return;
+          }
+          if (restartCountRef.current >= MAX_AUTO_RESTARTS) {
+            wantListeningRef.current = false;
+            setListening(false);
+            setInterim("");
+            setHint(tRef.current("dictate.tapAgain"));
+            return;
+          }
+          gotFinalRef.current = false;
           clearRestartTimer();
           restartTimerRef.current = window.setTimeout(() => {
             if (!wantListeningRef.current) return;
-            try {
-              startRecognition();
-            } catch {
-              wantListeningRef.current = false;
-              setListening(false);
-              setInterim("");
-            }
-          }, 250);
-        } else {
-          setListening(false);
-          setInterim("");
-        }
-      };
+            restartCountRef.current += 1;
+            startRecognitionRef.current();
+          }, restartDelayMs());
+        };
 
-      recRef.current = rec;
-      rec.start();
-      setListening(true);
-    } catch {
-      setUnsupported(true);
-      setHint(t("dictate.unsupported"));
-      wantListeningRef.current = false;
-      setListening(false);
-    }
-  }, [t]);
+        recRef.current = rec;
+        rec.start();
+        setListening(true);
+        startingRef.current = false;
+      } catch {
+        startingRef.current = false;
+        setUnsupported(true);
+        setShowVoiceNote(true);
+        setHint(tRef.current("dictate.unsupported"));
+        wantListeningRef.current = false;
+        setListening(false);
+      }
+    };
+  }, []);
 
   const start = useCallback(() => {
     setHint("");
     setInterim("");
+    restartCountRef.current = 0;
+    networkFailCountRef.current = 0;
+    networkRetryPendingRef.current = false;
+    gotFinalRef.current = false;
+    clearRestartTimer();
+    clearNetworkRetryTimer();
     wantListeningRef.current = true;
-    startRecognition();
-  }, [startRecognition]);
+    startRecognitionRef.current();
+  }, []);
 
   useEffect(() => {
     if (!autoStart) return;
@@ -220,26 +308,90 @@ export default function DictateButton({
     return () => {
       wantListeningRef.current = false;
       clearRestartTimer();
+      clearNetworkRetryTimer();
       try {
         recRef.current?.abort();
       } catch {
         /* ignore */
       }
+      try {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      } catch {
+        /* ignore */
+      }
+      mediaStreamRef.current?.getTracks().forEach((tr) => tr.stop());
     };
   }, []);
 
-  // If speech language changes while listening, abort; onend auto-restarts with langRef
+  // Language change while listening: soft stop — onend restarts with new lang
   useEffect(() => {
     if (!wantListeningRef.current) return;
     clearRestartTimer();
-    try {
-      recRef.current?.abort();
-    } catch {
-      /* ignore */
-    }
+    stopRecognitionSoft();
   }, [effectiveLang]);
 
-  if (unsupported && !listening) {
+  const stopVoiceNote = useCallback(() => {
+    const mr = mediaRecorderRef.current;
+    if (mr && mr.state !== "inactive") {
+      try {
+        mr.stop();
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
+
+  const startVoiceNote = useCallback(async () => {
+    if (!onAudioNote) return;
+    if (recordingNote) {
+      stopVoiceNote();
+      return;
+    }
+    try {
+      stop();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : MediaRecorder.isTypeSupported("audio/mp4")
+            ? "audio/mp4"
+            : "";
+      const mr = mime
+        ? new MediaRecorder(stream, { mimeType: mime })
+        : new MediaRecorder(stream);
+      mediaChunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) mediaChunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const usedMime = mr.mimeType || mime || "audio/webm";
+        const blob = new Blob(mediaChunksRef.current, { type: usedMime });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const dataUrl = String(reader.result || "");
+          if (dataUrl) onAudioNote(dataUrl, usedMime);
+          setHint(t("dictate.voiceNoteSaved"));
+        };
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach((tr) => tr.stop());
+        mediaStreamRef.current = null;
+        setRecordingNote(false);
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecordingNote(true);
+      setHint(t("dictate.voiceNoteRecording"));
+    } catch {
+      setHint(t("dictate.micDenied"));
+      setRecordingNote(false);
+    }
+  }, [onAudioNote, recordingNote, stop, stopVoiceNote, t]);
+
+  if (unsupported && !listening && !onAudioNote) {
     return (
       <p
         className={`text-sm text-stone-500 dark:text-stone-400 text-center py-2 ${className}`}
@@ -252,22 +404,24 @@ export default function DictateButton({
 
   return (
     <div className={className}>
-      <button
-        type="button"
-        onClick={() => (listening ? stop() : start())}
-        aria-pressed={listening}
-        aria-label={
-          listening ? t("dictate.stopAria") : t("dictate.startAria")
-        }
-        className={`w-full min-h-[56px] rounded-2xl border px-4 py-3 text-base font-semibold inline-flex items-center justify-center gap-3 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-stone-900 ${
-          listening
-            ? "bg-indigo-600 text-white border-indigo-700 shadow-md animate-pulse"
-            : "bg-card text-foreground border-border hover:border-indigo-300 active:bg-stone-50 dark:active:bg-stone-800"
-        }`}
-      >
-        <MicIcon listening={listening} />
-        {listening ? t("dictate.listening") : t("dictate.listen")}
-      </button>
+      {!unsupported && (
+        <button
+          type="button"
+          onClick={() => (listening ? stop() : start())}
+          aria-pressed={listening}
+          aria-label={
+            listening ? t("dictate.stopAria") : t("dictate.startAria")
+          }
+          className={`w-full min-h-[56px] rounded-2xl border px-4 py-3 text-base font-semibold inline-flex items-center justify-center gap-3 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-stone-900 ${
+            listening
+              ? "bg-indigo-600 text-white border-indigo-700 shadow-md animate-pulse"
+              : "bg-card text-foreground border-border hover:border-indigo-300 active:bg-stone-50 dark:active:bg-stone-800"
+          }`}
+        >
+          <MicIcon listening={listening} />
+          {listening ? t("dictate.listening") : t("dictate.listen")}
+        </button>
+      )}
       {interim && listening && (
         <p
           className="text-xs text-stone-400 dark:text-stone-500 text-center mt-2 italic truncate px-2"
@@ -276,15 +430,31 @@ export default function DictateButton({
           {interim}
         </p>
       )}
-      {hint && !unsupported && (
+      {hint && (
         <p className="text-xs text-amber-800 dark:text-amber-300 text-center mt-2">
           {hint}
         </p>
       )}
-      {append && (
+      {append && !showVoiceNote && (
         <p className="text-[11px] text-stone-400 dark:text-stone-500 text-center mt-1.5">
           {t("dictate.appendHint")}
         </p>
+      )}
+      {onAudioNote && (showVoiceNote || unsupported) && (
+        <button
+          type="button"
+          onClick={startVoiceNote}
+          aria-pressed={recordingNote}
+          className={`w-full min-h-[48px] mt-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold inline-flex items-center justify-center gap-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            recordingNote
+              ? "bg-rose-600 text-white border-rose-700 animate-pulse"
+              : "bg-card text-foreground border-border hover:border-rose-300"
+          }`}
+        >
+          {recordingNote
+            ? t("dictate.voiceNoteStop")
+            : t("dictate.voiceNote")}
+        </button>
       )}
     </div>
   );
