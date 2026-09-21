@@ -1,0 +1,25 @@
+{
+  "name": "Querra Fișă",
+  "short_name": "Querra Fișă",
+  "description": "Fișă digitală de service pentru utilaje profesionale de curățenie",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1d4ed8",
+  "theme_color": "#1d4ed8",
+  "orientation": "portrait",
+  "lang": "ro",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
