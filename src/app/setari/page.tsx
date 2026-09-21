@@ -6,8 +6,12 @@ import BigButton from "@/components/BigButton";
 import { Field, inputCls } from "@/components/Field";
 import { getSettings, saveSettings } from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
+import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
+import { useTheme, type Theme } from "@/lib/theme";
 
 export default function SetariPage() {
+  const { t, locale, setLocale } = useI18n();
+  const { theme, setTheme } = useTheme();
   const [s, setS] = useState<FirmSettings>({
     companyName: "",
     cui: "",
@@ -23,7 +27,7 @@ export default function SetariPage() {
 
   async function onSave() {
     await saveSettings(s);
-    setMsg("Setări salvate.");
+    setMsg(t("settings.saved"));
   }
 
   function onLogo(file: File | undefined) {
@@ -36,16 +40,63 @@ export default function SetariPage() {
   }
 
   return (
-    <AppShell title="Setări firmă">
+    <AppShell title={t("settings.title")}>
+      <div className="qf-card p-5 mb-4">
+        <h2 className="text-sm font-semibold text-foreground mb-3">
+          {t("settings.appearance")}
+        </h2>
+        <Field label={t("settings.language")}>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(LOCALE_LABELS) as Locale[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLocale(l)}
+                className={`min-h-[44px] rounded-xl border text-sm font-semibold transition ${
+                  locale === l
+                    ? "bg-indigo-600 text-white border-indigo-700"
+                    : "bg-card border-border text-foreground active:bg-stone-50 dark:active:bg-stone-800"
+                }`}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label={t("settings.theme")}>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                { v: "light" as Theme, label: t("settings.themeLight") },
+                { v: "dark" as Theme, label: t("settings.themeDark") },
+              ] as const
+            ).map(({ v, label }) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setTheme(v)}
+                className={`min-h-[44px] rounded-xl border text-sm font-semibold transition ${
+                  theme === v
+                    ? "bg-indigo-600 text-white border-indigo-700"
+                    : "bg-card border-border text-foreground active:bg-stone-50 dark:active:bg-stone-800"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </div>
+
       <div className="qf-card p-5 mb-2">
-        <Field label="Nume firmă (antet PDF)">
+        <Field label={t("settings.companyName")}>
           <input
             className={inputCls}
             value={s.companyName}
             onChange={(e) => setS({ ...s, companyName: e.target.value })}
           />
         </Field>
-        <Field label="CUI (stub)">
+        <Field label={t("settings.cui")}>
           <input
             className={inputCls}
             value={s.cui}
@@ -53,14 +104,14 @@ export default function SetariPage() {
             placeholder="RO12345678"
           />
         </Field>
-        <Field label="Adresă">
+        <Field label={t("settings.address")}>
           <input
             className={inputCls}
             value={s.address || ""}
             onChange={(e) => setS({ ...s, address: e.target.value })}
           />
         </Field>
-        <Field label="Telefon">
+        <Field label={t("settings.phone")}>
           <input
             className={inputCls}
             value={s.phone || ""}
@@ -68,7 +119,7 @@ export default function SetariPage() {
           />
         </Field>
 
-        <Field label="Logo firmă">
+        <Field label={t("settings.logo")}>
           <input
             ref={fileRef}
             type="file"
@@ -80,7 +131,7 @@ export default function SetariPage() {
             variant="secondary"
             onClick={() => fileRef.current?.click()}
           >
-            Încarcă logo
+            {t("settings.uploadLogo")}
           </BigButton>
           {s.logoDataUrl && (
             <div className="mt-3 flex items-center gap-3">
@@ -88,14 +139,14 @@ export default function SetariPage() {
               <img
                 src={s.logoDataUrl}
                 alt="Logo"
-                className="h-16 w-16 object-contain rounded-xl border border-stone-200"
+                className="h-16 w-16 object-contain rounded-xl border border-border"
               />
               <button
                 type="button"
-                className="text-sm text-red-600 font-medium min-h-[44px] px-2"
+                className="text-sm text-red-600 dark:text-red-400 font-medium min-h-[44px] px-2"
                 onClick={() => setS({ ...s, logoDataUrl: undefined })}
               >
-                Elimină
+                {t("settings.removeLogo")}
               </button>
             </div>
           )}
@@ -103,10 +154,10 @@ export default function SetariPage() {
       </div>
 
       <BigButton onClick={onSave} className="mt-4">
-        Salvează setările
+        {t("settings.save")}
       </BigButton>
       {msg && (
-        <p className="text-center text-teal-800 font-medium mt-3 text-sm">
+        <p className="text-center text-teal-800 dark:text-teal-300 font-medium mt-3 text-sm">
           {msg}
         </p>
       )}

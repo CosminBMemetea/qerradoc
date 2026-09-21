@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "Querra Fișă",
@@ -21,7 +22,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#F7F7F5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F7F7F5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0c0c0e" },
+  ],
 };
 
 export default function RootLayout({
@@ -30,8 +34,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ro">
-      <body className="antialiased">{children}</body>
+    <html lang="ro" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('querra-theme');if(t==='dark')document.documentElement.classList.add('dark');var l=localStorage.getItem('querra-locale');if(l==='en'||l==='pl'||l==='ro')document.documentElement.lang=l;}catch(e){}})();`,
+          }}
+        />
+      </head>
+      <body className="antialiased bg-background text-foreground">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

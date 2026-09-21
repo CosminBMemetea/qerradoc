@@ -7,9 +7,11 @@ import BigButton from "@/components/BigButton";
 import { getFisa, getSettings } from "@/lib/db";
 import { generateFisaPdf, downloadBlob, sharePdf } from "@/lib/pdf";
 import type { Fisa, FirmSettings } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 
 export default function PdfPage() {
   const params = useParams();
+  const { t } = useI18n();
   const id = String(params.id);
   const [fisa, setFisa] = useState<Fisa | null>(null);
   const [settings, setSettings] = useState<FirmSettings | null>(null);
@@ -35,9 +37,9 @@ export default function PdfPage() {
       const blob = await makeBlob();
       const name = `Fisa_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
       downloadBlob(blob, name);
-      setMsg("PDF descărcat.");
+      setMsg(t("pdf.downloaded"));
     } catch {
-      setMsg("Eroare la generarea PDF.");
+      setMsg(t("pdf.errGen"));
     } finally {
       setBusy(false);
     }
@@ -50,9 +52,9 @@ export default function PdfPage() {
       const blob = await makeBlob();
       const name = `Fisa_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
       const shared = await sharePdf(blob, name);
-      setMsg(shared ? "Partajat." : "PDF descărcat (share indisponibil).");
+      setMsg(shared ? t("pdf.shared") : t("pdf.downloadedFallback"));
     } catch {
-      setMsg("Eroare la partajare.");
+      setMsg(t("pdf.errShare"));
     } finally {
       setBusy(false);
     }
@@ -61,54 +63,72 @@ export default function PdfPage() {
   if (!fisa || !settings) {
     return (
       <AppShell title="PDF" backHref={`/fise/${id}`}>
-        <p className="text-center py-10 text-stone-500">Se încarcă…</p>
+        <p className="text-center py-10 text-muted">{t("app.loadingShort")}</p>
       </AppShell>
     );
   }
 
   return (
-    <AppShell title="PDF fișă" backHref={`/fise/${id}`}>
+    <AppShell title={t("pdf.title")} backHref={`/fise/${id}`}>
       {!fisa.reviewed && (
-        <div className="qf-card p-3.5 text-sm mb-4 text-amber-950 bg-amber-50/90 border-amber-200/80">
-          Fișa nu a fost încă salvată după revizie. Poți genera PDF, dar
-          recomandăm să salvezi mai întâi din ecranul de editare.
+        <div className="qf-card p-3.5 text-sm mb-4 text-amber-950 dark:text-amber-100 bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60">
+          {t("pdf.warnReview")}
         </div>
       )}
       <div className="qf-card p-5 mb-5">
-        <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 mb-1">
-          Previzualizare sumar
+        <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500 mb-1">
+          {t("pdf.summary")}
         </p>
-        <h2 className="text-lg font-semibold text-stone-900">
+        <h2 className="text-lg font-semibold text-foreground">
           {settings.companyName}
         </h2>
-        <p className="font-medium mt-2 text-stone-800">
-          Fișă de {fisa.tip} · Nr. {fisa.nrFisa || "—"}
+        <p className="font-medium mt-2 text-foreground">
+          {t("pdf.fisaOf")} {t(`tip.${fisa.tip}`)} · {t("pdf.nr")}{" "}
+          {fisa.nrFisa || "—"}
         </p>
         <dl className="mt-3 space-y-1.5 text-sm">
           <div>
-            <span className="text-stone-400">Client: </span>
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.client")}{" "}
+            </span>
             {fisa.client || "—"}
           </div>
           <div>
-            <span className="text-stone-400">Locație: </span>
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.locatie")}{" "}
+            </span>
             {fisa.locatie || "—"}
           </div>
           <div>
-            <span className="text-stone-400">Utilaj: </span>
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.utilaj")}{" "}
+            </span>
             {fisa.modelUtilaj || "—"} / {fisa.serie || "—"}
           </div>
           <div>
-            <span className="text-stone-400">Manoperă: </span>
-            {fisa.manoperaOre || "—"} h · Deplasare: {fisa.deplasareKm || "—"}{" "}
-            km ({fisa.deplasareDaNu || "—"})
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.manopera")}{" "}
+            </span>
+            {fisa.manoperaOre || "—"} h · {t("pdf.deplasare")}{" "}
+            {fisa.deplasareKm || "—"} km (
+            {fisa.deplasareDaNu === "DA"
+              ? t("form.yes")
+              : fisa.deplasareDaNu === "NU"
+                ? t("form.no")
+                : "—"}
+            )
           </div>
           <div>
-            <span className="text-stone-400">Reclamație: </span>
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.reclamatie")}{" "}
+            </span>
             {fisa.reclamatie || "—"}
           </div>
           <div>
-            <span className="text-stone-400">Piese: </span>
-            {fisa.piese.filter((p) => p.denumire).length} linii
+            <span className="text-stone-400 dark:text-stone-500">
+              {t("pdf.piese")}{" "}
+            </span>
+            {fisa.piese.filter((p) => p.denumire).length} {t("pdf.pieseLines")}
           </div>
           {fisa.photoDataUrl && (
             <div className="pt-2">
@@ -116,7 +136,7 @@ export default function PdfPage() {
               <img
                 src={fisa.photoDataUrl}
                 alt="Foto"
-                className="w-full max-h-40 object-contain rounded-xl bg-stone-50"
+                className="w-full max-h-40 object-contain rounded-xl bg-stone-50 dark:bg-stone-900"
               />
             </div>
           )}
@@ -125,14 +145,14 @@ export default function PdfPage() {
 
       <div className="space-y-3">
         <BigButton onClick={onDownload} disabled={busy}>
-          Descarcă PDF
+          {t("pdf.download")}
         </BigButton>
         <BigButton variant="secondary" onClick={onShare} disabled={busy}>
-          Partajează PDF
+          {t("pdf.share")}
         </BigButton>
       </div>
       {msg && (
-        <p className="text-center text-sm font-medium text-teal-800 mt-3">
+        <p className="text-center text-sm font-medium text-teal-800 dark:text-teal-300 mt-3">
           {msg}
         </p>
       )}

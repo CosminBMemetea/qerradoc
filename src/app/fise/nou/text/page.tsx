@@ -9,10 +9,12 @@ import { Field, textareaCls } from "@/components/Field";
 import { emptyFisa } from "@/lib/types";
 import { parseWhatsAppText, SAMPLE_WHATSAPP } from "@/lib/parse-text";
 import { saveFisa, getSession } from "@/lib/db";
+import { useI18n } from "@/lib/i18n";
 
 function TextInner() {
   const router = useRouter();
   const search = useSearchParams();
+  const { t } = useI18n();
   const autoDictate = search.get("dictate") === "1";
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,13 +47,13 @@ function TextInner() {
   }
 
   return (
-    <AppShell title="Din text" backHref="/fise/nou">
-      <Field label="Lipește mesajul WhatsApp / notițe">
+    <AppShell title={t("text.title")} backHref="/fise/nou">
+      <Field label={t("text.label")}>
         <textarea
           className={textareaCls + " min-h-[200px]"}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ex: client Hotel… utilaj Kärcher… serie…"
+          placeholder={t("text.placeholder")}
         />
       </Field>
 
@@ -64,18 +66,17 @@ function TextInner() {
 
       <div className="space-y-3">
         <BigButton onClick={() => go(true)} disabled={busy || !text.trim()}>
-          Completează automat → Revizie
+          {t("text.parse")}
         </BigButton>
         <BigButton
           variant="secondary"
           onClick={() => setText(SAMPLE_WHATSAPP)}
         >
-          Încarcă text exemplu
+          {t("text.sample")}
         </BigButton>
       </div>
-      <p className="text-xs text-stone-400 mt-5 leading-relaxed">
-        Parser heuristic local (fără cloud). Apoi editezi manual — nu poți sări
-        peste revizie.
+      <p className="text-xs text-stone-400 dark:text-stone-500 mt-5 leading-relaxed">
+        {t("text.hint")}
       </p>
     </AppShell>
   );
@@ -83,14 +84,17 @@ function TextInner() {
 
 export default function NewFromTextPage() {
   return (
-    <Suspense
-      fallback={
-        <AppShell title="Din text" backHref="/fise/nou">
-          <p className="text-center text-stone-500 py-10">Se încarcă…</p>
-        </AppShell>
-      }
-    >
+    <Suspense fallback={<TextFallback />}>
       <TextInner />
     </Suspense>
+  );
+}
+
+function TextFallback() {
+  const { t } = useI18n();
+  return (
+    <AppShell title={t("text.title")} backHref="/fise/nou">
+      <p className="text-center text-muted py-10">{t("app.loadingShort")}</p>
+    </AppShell>
   );
 }

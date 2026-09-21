@@ -7,8 +7,10 @@ import BigButton from "@/components/BigButton";
 import { listFise, getSession } from "@/lib/db";
 import { seedDemoFisa } from "@/lib/seed";
 import type { Fisa } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 
 export default function FiseListPage() {
+  const { t } = useI18n();
   const [fise, setFise] = useState<Fisa[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,24 +32,22 @@ export default function FiseListPage() {
   }
 
   return (
-    <AppShell title="Fișele mele">
+    <AppShell title={t("fise.title")}>
       <div className="space-y-3 mb-6">
         <BigButton href="/fise/nou" variant="primary">
-          Fișă nouă
+          {t("fise.new")}
         </BigButton>
         <BigButton variant="secondary" onClick={onSeed}>
-          Încarcă fișă demo
+          {t("fise.seed")}
         </BigButton>
       </div>
 
       {loading ? (
-        <p className="text-stone-500 text-center py-10">Se încarcă…</p>
+        <p className="text-muted text-center py-10">{t("app.loadingShort")}</p>
       ) : fise.length === 0 ? (
-        <div className="qf-card text-center py-12 px-6 text-stone-500">
-          <p className="font-medium text-stone-800">Nicio fișă încă</p>
-          <p className="text-sm mt-1.5 leading-relaxed">
-            Creează una din text, dictare sau fotografie.
-          </p>
+        <div className="qf-card text-center py-12 px-6 text-muted">
+          <p className="font-medium text-foreground">{t("fise.emptyTitle")}</p>
+          <p className="text-sm mt-1.5 leading-relaxed">{t("fise.emptyDesc")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -55,25 +55,25 @@ export default function FiseListPage() {
             <li key={f.id}>
               <Link
                 href={`/fise/${f.id}`}
-                className="block qf-card p-4 active:bg-stone-50 transition"
+                className="block qf-card p-4 active:bg-stone-50 dark:active:bg-stone-800 transition"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="min-w-0">
-                    <div className="font-semibold text-stone-900 truncate">
-                      {f.nrFisa || "Fără nr."}
+                    <div className="font-semibold text-foreground truncate">
+                      {f.nrFisa || t("fise.noNumber")}
                       <span className="text-stone-400 font-normal"> · </span>
-                      <span className="text-indigo-700 font-medium">
-                        {f.tip}
+                      <span className="text-indigo-700 dark:text-indigo-400 font-medium">
+                        {t(`tip.${f.tip}`)}
                       </span>
                     </div>
-                    <div className="text-sm text-stone-700 truncate mt-0.5">
-                      {f.client || "Client necunoscut"}
+                    <div className="text-sm text-stone-700 dark:text-stone-300 truncate mt-0.5">
+                      {f.client || t("fise.unknownClient")}
                     </div>
-                    <div className="text-xs text-stone-400 truncate mt-0.5">
-                      {f.modelUtilaj || "—"} · {f.serie || "fără serie"}
+                    <div className="text-xs text-stone-400 dark:text-stone-500 truncate mt-0.5">
+                      {f.modelUtilaj || "—"} · {f.serie || t("fise.noSerie")}
                     </div>
                   </div>
-                  <div className="text-xs text-stone-400 whitespace-nowrap pt-0.5">
+                  <div className="text-xs text-stone-400 dark:text-stone-500 whitespace-nowrap pt-0.5">
                     {f.dataInterventiei || f.updatedAt.slice(0, 10)}
                   </div>
                 </div>

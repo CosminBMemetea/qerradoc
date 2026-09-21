@@ -2,34 +2,35 @@
 
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
+import { useI18n } from "@/lib/i18n";
 
 export default function NewFisaChooser() {
+  const { t } = useI18n();
   const cards = [
     {
       href: "/fise/nou/text?dictate=1",
-      title: "Dictează fișa",
-      desc: "Vorbește — textul se completează automat, apoi revizie.",
+      title: t("new.dictateTitle"),
+      desc: t("new.dictateDesc"),
       primary: true,
     },
     {
       href: "/fise/nou/text",
-      title: "Din text",
-      desc: "Lipește mesaj WhatsApp sau notițe.",
+      title: t("new.textTitle"),
+      desc: t("new.textDesc"),
       primary: false,
     },
     {
       href: "/fise/nou/foto",
-      title: "Din fotografie",
-      desc: "Capturează utilajul și completează din model.",
+      title: t("new.photoTitle"),
+      desc: t("new.photoDesc"),
       primary: false,
     },
   ];
 
   return (
-    <AppShell title="Fișă nouă" backHref="/fise">
-      <p className="text-stone-500 mb-6 text-[15px] leading-relaxed text-center">
-        Alege cum începi. După completare automată verifici obligatoriu
-        formularul.
+    <AppShell title={t("new.title")} backHref="/fise">
+      <p className="text-muted mb-6 text-[15px] leading-relaxed text-center">
+        {t("new.intro")}
       </p>
       <div className="space-y-3">
         {cards.map((c) => (
@@ -39,19 +40,19 @@ export default function NewFisaChooser() {
             className={`block rounded-2xl border p-5 min-h-[88px] transition active:scale-[0.99] ${
               c.primary
                 ? "bg-indigo-600 text-white border-indigo-700 shadow-sm"
-                : "bg-white text-stone-900 border-stone-200 shadow-sm active:bg-stone-50"
+                : "bg-card text-foreground border-border shadow-sm active:bg-stone-50 dark:active:bg-stone-800"
             }`}
           >
             <div
               className={`text-lg font-semibold tracking-tight ${
-                c.primary ? "text-white" : "text-stone-900"
+                c.primary ? "text-white" : "text-foreground"
               }`}
             >
               {c.title}
             </div>
             <p
               className={`text-sm mt-1 leading-relaxed ${
-                c.primary ? "text-indigo-100" : "text-stone-500"
+                c.primary ? "text-indigo-100" : "text-muted"
               }`}
             >
               {c.desc}
