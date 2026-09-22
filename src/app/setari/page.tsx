@@ -8,6 +8,7 @@ import { getSettings, saveSettings } from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
+import { firmExample } from "@/lib/defaults";
 
 export default function SetariPage() {
   const { t, locale, setLocale } = useI18n();
@@ -95,11 +96,15 @@ export default function SetariPage() {
       </div>
 
       <div className="qf-card p-5 mb-2">
-        <Field label={t("settings.companyName")}>
+        <Field
+          label={t("settings.companyName")}
+          info={t("settings.companyInfo")}
+        >
           <input
             className={inputCls}
             value={s.companyName}
             onChange={(e) => setS({ ...s, companyName: e.target.value })}
+            placeholder={firmExample(locale)}
           />
         </Field>
         <Field label={t("settings.cui")}>

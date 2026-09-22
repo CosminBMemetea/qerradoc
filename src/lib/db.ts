@@ -2,6 +2,7 @@
 
 import { get, set, del, keys } from "idb-keyval";
 import type { Fisa, FirmSettings, LicenseState, Session } from "./types";
+import { firmExample } from "./defaults";
 
 const FISA_PREFIX = "fisa:";
 const SETTINGS_KEY = "firm-settings";
@@ -34,9 +35,13 @@ export async function listFise(): Promise<Fisa[]> {
 
 export async function getSettings(): Promise<FirmSettings> {
   const s = await get<FirmSettings>(SETTINGS_KEY);
+  const lang =
+    typeof document !== "undefined"
+      ? document.documentElement.lang || "ro"
+      : "ro";
   return (
     s || {
-      companyName: "UTILAJE PROFESIONALE PENTRU CURATENIE",
+      companyName: firmExample(lang),
       cui: "",
       address: "",
       phone: "",

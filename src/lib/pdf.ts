@@ -2,6 +2,7 @@
 
 import { jsPDF } from "jspdf";
 import type { Fisa, FirmSettings } from "./types";
+import { firmExample } from "./defaults";
 
 export async function generateFisaPdf(
   fisa: Fisa,
@@ -12,8 +13,11 @@ export async function generateFisaPdf(
   const margin = 12;
   let y = 12;
 
-  const header =
-    settings.companyName || "UTILAJE PROFESIONALE PENTRU CURATENIE";
+  const lang =
+    typeof document !== "undefined"
+      ? document.documentElement.lang || "ro"
+      : "ro";
+  const header = settings.companyName || firmExample(lang);
 
   // Logo
   if (settings.logoDataUrl) {

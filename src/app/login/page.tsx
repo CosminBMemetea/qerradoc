@@ -1,21 +1,32 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveSession, getSettings, saveSettings, getLicense } from "@/lib/db";
 import { Field, inputCls } from "@/components/Field";
 import BigButton from "@/components/BigButton";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
+import {
+  firmExample,
+  techExample,
+  isFirmExample,
+  isTechExample,
+} from "@/lib/defaults";
 
 export default function LoginPage() {
   const router = useRouter();
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
-  const [firm, setFirm] = useState("UTILAJE PROFESIONALE PENTRU CURATENIE");
-  const [tech, setTech] = useState("Ion Popescu");
+  const [firm, setFirm] = useState(() => firmExample(locale));
+  const [tech, setTech] = useState(() => techExample(locale));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+
+  useEffect(() => {
+    setFirm((prev) => (isFirmExample(prev) ? firmExample(locale) : prev));
+    setTech((prev) => (isTechExample(prev) ? techExample(locale) : prev));
+  }, [locale]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -85,7 +96,7 @@ export default function LoginPage() {
           onSubmit={onSubmit}
           className="bg-card rounded-2xl p-6 border border-border shadow-sm space-y-1"
         >
-          <Field label={t("login.firm")}>
+          <Field label={t("login.firm")} info={t("login.firmInfo")}>
             <input
               className={inputCls}
               value={firm}
@@ -93,7 +104,7 @@ export default function LoginPage() {
               autoComplete="organization"
             />
           </Field>
-          <Field label={t("login.tech")}>
+          <Field label={t("login.tech")} info={t("login.techInfo")}>
             <input
               className={inputCls}
               value={tech}
