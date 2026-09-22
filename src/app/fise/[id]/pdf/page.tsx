@@ -11,7 +11,7 @@ import { useI18n } from "@/lib/i18n";
 
 export default function PdfPage() {
   const params = useParams();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const id = String(params.id);
   const [fisa, setFisa] = useState<Fisa | null>(null);
   const [settings, setSettings] = useState<FirmSettings | null>(null);
@@ -27,7 +27,7 @@ export default function PdfPage() {
 
   async function makeBlob() {
     if (!fisa || !settings) throw new Error("missing");
-    return generateFisaPdf(fisa, settings);
+    return generateFisaPdf(fisa, settings, locale);
   }
 
   async function onDownload() {

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
-    "start:lan": "next start -H 0.0.0.0 -p 3000"
+    "start:lan": "next start -H 0.0.0.0 -p 3000",
+    "preview:pdf": "npx --yes tsx scripts/preview-pdf.ts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
