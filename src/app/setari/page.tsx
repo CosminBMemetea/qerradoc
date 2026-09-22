@@ -88,6 +88,12 @@ export default function SetariPage() {
         </Field>
       </div>
 
+      <div className="mb-4">
+        <BigButton href="/ghid" variant="secondary">
+          {t("settings.openGuide")}
+        </BigButton>
+      </div>
+
       <div className="qf-card p-5 mb-2">
         <Field label={t("settings.companyName")}>
           <input

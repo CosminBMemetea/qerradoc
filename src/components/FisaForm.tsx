@@ -39,7 +39,7 @@ export default function FisaForm({
         {t("form.reviewBanner")}
       </div>
 
-      <Field label={t("form.tip")}>
+      <Field label={t("form.tip")} hint={t("hint.tip")}>
         <div className="grid grid-cols-2 gap-2">
           {TIPURI.map((tip) => (
             <button
@@ -75,7 +75,7 @@ export default function FisaForm({
         />
       </Field>
 
-      <Field label={t("form.client")}>
+      <Field label={t("form.client")} hint={t("hint.client")}>
         <input
           className={inputCls}
           value={fisa.client}
@@ -83,7 +83,7 @@ export default function FisaForm({
         />
       </Field>
 
-      <Field label={t("form.locatie")}>
+      <Field label={t("form.locatie")} hint={t("hint.locatie")}>
         <input
           className={inputCls}
           value={fisa.locatie}
@@ -91,7 +91,7 @@ export default function FisaForm({
         />
       </Field>
 
-      <Field label={t("form.modelUtilaj")}>
+      <Field label={t("form.modelUtilaj")} hint={t("hint.modelUtilaj")}>
         <input
           className={inputCls}
           value={fisa.modelUtilaj}
@@ -160,10 +160,11 @@ export default function FisaForm({
         </div>
       </Field>
 
-      <Field label={t("form.reclamatie")}>
+      <Field label={t("form.reclamatie")} hint={t("hint.reclamatie")}>
         <textarea
           className={textareaCls}
           value={fisa.reclamatie}
+          placeholder={t("hint.reclamatie")}
           onChange={(e) => set("reclamatie", e.target.value)}
         />
         <div className="mt-2">
@@ -196,9 +197,12 @@ export default function FisaForm({
       )}
 
       <div className="mb-4">
-        <h3 className="font-semibold text-foreground mb-2 text-sm">
+        <h3 className="font-semibold text-foreground mb-1 text-sm">
           {t("form.piese")}
         </h3>
+        <p className="text-xs text-stone-400 dark:text-stone-500 mb-2">
+          {t("hint.piese")}
+        </p>
         <div className="space-y-3">
           {fisa.piese.slice(0, 15).map((p, idx) => (
             <div key={p.nr} className="qf-card p-3">
@@ -239,7 +243,7 @@ export default function FisaForm({
       </div>
 
       <div className="grid grid-cols-1 gap-1">
-        <Field label={t("form.dataAnuntarii")}>
+        <Field label={t("form.dataAnuntarii")} hint={t("hint.dates")}>
           <input
             type="date"
             lang={dateLang}
@@ -259,10 +263,11 @@ export default function FisaForm({
         </Field>
       </div>
 
-      <Field label={t("form.observatii")}>
+      <Field label={t("form.observatii")} hint={t("hint.observatii")}>
         <textarea
           className={textareaCls}
           value={fisa.observatii}
+          placeholder={t("hint.observatii")}
           onChange={(e) => set("observatii", e.target.value)}
         />
         <div className="mt-2">
@@ -274,15 +279,16 @@ export default function FisaForm({
         </div>
       </Field>
 
-      <Field label={t("form.motiveInlocuire")}>
+      <Field label={t("form.motiveInlocuire")} hint={t("hint.motiveInlocuire")}>
         <textarea
           className={textareaCls}
           value={fisa.motiveInlocuire}
+          placeholder={t("hint.motiveInlocuire")}
           onChange={(e) => set("motiveInlocuire", e.target.value)}
         />
       </Field>
 
-      <Field label={t("form.semnaturaClient")}>
+      <Field label={t("form.semnaturaClient")} hint={t("hint.semnaturi")}>
         <input
           className={inputCls}
           value={fisa.semnaturaClient}
@@ -291,7 +297,7 @@ export default function FisaForm({
         />
       </Field>
 
-      <Field label={t("form.semnaturaTehnician")}>
+      <Field label={t("form.semnaturaTehnician")} hint={t("hint.semnaturi")}>
         <input
           className={inputCls}
           value={fisa.semnaturaTehnician}

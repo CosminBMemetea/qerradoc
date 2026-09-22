@@ -138,6 +138,13 @@ export default function AppShell({
           </div>
           {showNav && (
             <div className="flex items-center gap-1.5">
+              <Link
+                href="/ghid"
+                className="text-xs font-medium text-stone-600 dark:text-stone-300 px-2.5 py-2 rounded-xl border border-border bg-card active:bg-stone-50 dark:active:bg-stone-800 min-h-[40px] inline-flex items-center"
+                aria-label={t("nav.guide")}
+              >
+                {t("nav.guide")}
+              </Link>
               <button
                 type="button"
                 onClick={toggleTheme}

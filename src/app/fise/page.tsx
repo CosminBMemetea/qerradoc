@@ -6,16 +6,12 @@ import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { listFise, getSession } from "@/lib/db";
 import { seedDemoFisa } from "@/lib/seed";
-import {
-  seedDemoCuratenie,
-  seedDemoTamplarie,
-  seedDemoStoma,
-} from "@/lib/demos";
+import { loadDemo } from "@/lib/demos";
 import type { Fisa, TemplateKind } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
 export default function FiseListPage() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [fise, setFise] = useState<Fisa[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
@@ -31,9 +27,7 @@ export default function FiseListPage() {
     reload();
   }, []);
 
-  async function withTech(
-    fn: (name: string) => Promise<unknown>
-  ) {
+  async function withTech(fn: (name: string) => Promise<unknown>) {
     setSeeding(true);
     try {
       const s = await getSession();
@@ -49,11 +43,7 @@ export default function FiseListPage() {
   }
 
   async function onDemo(kind: TemplateKind) {
-    await withTech((name) => {
-      if (kind === "curatenie") return seedDemoCuratenie(name);
-      if (kind === "tamplarie") return seedDemoTamplarie(name);
-      return seedDemoStoma(name);
-    });
+    await withTech((name) => loadDemo(kind, locale, name));
   }
 
   return (
@@ -99,9 +89,28 @@ export default function FiseListPage() {
       {loading ? (
         <p className="text-muted text-center py-10">{t("app.loadingShort")}</p>
       ) : fise.length === 0 ? (
-        <div className="qf-card text-center py-12 px-6 text-muted">
-          <p className="font-medium text-foreground">{t("fise.emptyTitle")}</p>
-          <p className="text-sm mt-1.5 leading-relaxed">{t("fise.emptyDesc")}</p>
+        <div className="qf-card text-center py-10 px-5">
+          <p className="font-semibold text-foreground text-lg">
+            {t("fise.emptyTitle")}
+          </p>
+          <p className="text-sm mt-2 leading-relaxed text-muted">
+            {t("fise.emptyFriendly")}
+          </p>
+          <div className="mt-5 space-y-2.5 text-left">
+            <BigButton
+              variant="primary"
+              onClick={() => onDemo("curatenie")}
+              disabled={seeding}
+            >
+              {t("fise.emptyCtaDemo")}
+            </BigButton>
+            <BigButton href="/ghid" variant="secondary">
+              {t("fise.emptyCtaGuide")}
+            </BigButton>
+            <BigButton href="/fise/nou" variant="secondary">
+              {t("fise.emptyCtaNew")}
+            </BigButton>
+          </div>
         </div>
       ) : (
         <ul className="space-y-3">
