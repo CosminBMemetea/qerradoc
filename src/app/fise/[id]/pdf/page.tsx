@@ -12,6 +12,7 @@ import {
   pdfFilePrefix,
   pdfShareText,
 } from "@/lib/pdf";
+import { docLabels } from "@/lib/pdf-summary";
 import type { ContentLocale, Fisa, FirmSettings } from "@/lib/types";
 import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
@@ -25,6 +26,10 @@ export default function PdfPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [notFound, setNotFound] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewErr, setPreviewErr] = useState(false);
+  const [previewTick, setPreviewTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +75,40 @@ export default function PdfPage() {
   const contentLocale = resolveContentLocale(fisa);
   const contentLocaleLabel =
     contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
+  const L = docLabels(contentLocale);
+  const downloadName = fisa
+    ? `${pdfFilePrefix(contentLocale)}_${fisa.nrFisa || fisa.id.slice(0, 8)}.pdf`
+    : "";
+
+  /** Real PDF blob preview — follows contentLocale, not UI Settings. */
+  useEffect(() => {
+    if (!fisa || !settings) return;
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    setPreviewLoading(true);
+    setPreviewErr(false);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    const locale = resolveContentLocale(fisa);
+    generateFisaPdf(fisa, settings, locale)
+      .then((blob) => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setPreviewUrl(objectUrl);
+        setPreviewLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPreviewErr(true);
+        setPreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [fisa, settings, previewTick]);
 
   async function onDownload() {
     setBusy(true);
@@ -84,6 +123,7 @@ export default function PdfPage() {
       const name = `${pdfFilePrefix(fresh.contentLocale)}_${fresh.fisa.nrFisa || fresh.fisa.id.slice(0, 8)}.pdf`;
       downloadBlob(blob, name);
       setMsg(t("pdf.downloaded"));
+      setPreviewTick((n) => n + 1);
     } catch {
       setMsg(t("pdf.errGen"));
     } finally {
@@ -108,6 +148,7 @@ export default function PdfPage() {
         pdfShareText(fresh.contentLocale)
       );
       setMsg(shared ? t("pdf.shared") : t("pdf.downloadedFallback"));
+      setPreviewTick((n) => n + 1);
     } catch {
       setMsg(t("pdf.errShare"));
     } finally {
@@ -133,6 +174,13 @@ export default function PdfPage() {
     );
   }
 
+  const deplasareYn =
+    fisa.deplasareDaNu === "DA"
+      ? L.yes
+      : fisa.deplasareDaNu === "NU"
+        ? L.no
+        : "—";
+
   return (
     <AppShell title={t("pdf.title")} backHref={`/fise/${id}`}>
       {!fisa.reviewed && (
@@ -152,56 +200,52 @@ export default function PdfPage() {
             {t("form.documentLang")}: {contentLocaleLabel}
           </span>
         </div>
+        <p className="text-xs text-stone-500 dark:text-stone-400 mb-2">
+          {t("pdf.langFollowsDoc")}
+        </p>
         <h2 className="text-lg font-semibold text-foreground">
           {settings.companyName}
         </h2>
         <p className="font-medium mt-2 text-foreground">
-          {t("pdf.fisaOf")} {t(`tip.${fisa.tip}`)} · {t("pdf.nr")}{" "}
-          {fisa.nrFisa || "—"}
+          {L.fisaOf} {L.tip[fisa.tip]} · {L.nr} {fisa.nrFisa || "—"}
         </p>
         <dl className="mt-3 space-y-1.5 text-sm">
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.client")}{" "}
+              {L.client}{" "}
             </span>
             {fisa.client || "—"}
           </div>
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.locatie")}{" "}
+              {L.locatie}{" "}
             </span>
             {fisa.locatie || "—"}
           </div>
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.utilaj")}{" "}
+              {L.utilaj}{" "}
             </span>
             {fisa.modelUtilaj || "—"} / {fisa.serie || "—"}
           </div>
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.manopera")}{" "}
+              {L.manopera}{" "}
             </span>
-            {fisa.manoperaOre || "—"} h · {t("pdf.deplasare")}{" "}
-            {fisa.deplasareKm || "—"} km (
-            {fisa.deplasareDaNu === "DA"
-              ? t("form.yes")
-              : fisa.deplasareDaNu === "NU"
-                ? t("form.no")
-                : "—"}
-            )
+            {fisa.manoperaOre || "—"} h · {L.deplasare}{" "}
+            {fisa.deplasareKm || "—"} km ({deplasareYn})
           </div>
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.reclamatie")}{" "}
+              {L.reclamatie}{" "}
             </span>
             {fisa.reclamatie || "—"}
           </div>
           <div>
             <span className="text-stone-400 dark:text-stone-500">
-              {t("pdf.piese")}{" "}
+              {L.piese}{" "}
             </span>
-            {fisa.piese.filter((p) => p.denumire).length} {t("pdf.pieseLines")}
+            {fisa.piese.filter((p) => p.denumire).length} {L.pieseLines}
           </div>
           {fisa.photoDataUrl && (
             <div className="pt-2">
@@ -223,6 +267,33 @@ export default function PdfPage() {
           )}
         </dl>
       </div>
+
+      <div className="qf-card p-5 mb-5">
+        <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500 mb-2">
+          {t("pdf.preview")}
+        </p>
+        {previewLoading && (
+          <p className="text-sm text-muted py-8 text-center">
+            {t("pdf.previewLoading")}
+          </p>
+        )}
+        {previewErr && !previewLoading && (
+          <p className="text-sm text-red-600 dark:text-red-400 py-8 text-center">
+            {t("pdf.previewErr")}
+          </p>
+        )}
+        {previewUrl && !previewLoading && (
+          <iframe
+            title={t("pdf.preview")}
+            src={previewUrl}
+            className="w-full h-[28rem] rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900"
+          />
+        )}
+      </div>
+
+      <p className="text-center text-xs text-stone-500 dark:text-stone-400 mb-3 font-mono break-all">
+        {t("pdf.downloadAs", { name: downloadName })}
+      </p>
 
       <div className="space-y-3">
         <BigButton onClick={onDownload} disabled={busy}>
