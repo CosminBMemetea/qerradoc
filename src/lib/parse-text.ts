@@ -306,14 +306,14 @@ export function demoFillFromPhoto(
         denumire: "Filtru panou",
         cod: "56116026",
         cantitate: "1",
-        pretEur: "38.00",
+        pretEur: "190.00",
       };
       p[1] = {
         nr: 2,
         denumire: "Garnitură rezervor",
         cod: "G-SC500",
         cantitate: "1",
-        pretEur: "12.50",
+        pretEur: "62.50",
       };
       return p;
     })(),

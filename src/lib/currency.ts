@@ -3,16 +3,16 @@ export type CurrencyLocale = "ro" | "en" | "pl";
 
 /**
  * Locale currency symbol for form placeholders and PDF column headers.
- * RO → €, EN → £, PL → zł.
+ * RO → lei (RON), EN → € (EUR), PL → zł (PLN).
  */
 export function currencySymbol(locale: CurrencyLocale): string {
   switch (locale) {
     case "en":
-      return "£";
+      return "€";
     case "pl":
       return "zł";
     default:
-      return "€";
+      return "lei";
   }
 }
 
@@ -20,10 +20,10 @@ export function currencySymbol(locale: CurrencyLocale): string {
 export function currencyCode(locale: CurrencyLocale): string {
   switch (locale) {
     case "en":
-      return "GBP";
+      return "EUR";
     case "pl":
       return "PLN";
     default:
-      return "EUR";
+      return "RON";
   }
 }
