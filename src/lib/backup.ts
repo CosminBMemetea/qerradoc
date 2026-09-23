@@ -56,9 +56,16 @@ function softNormalizeFisa(raw: unknown): Fisa | null {
   if (!isPlainObject(raw)) return null;
   if (typeof raw.id !== "string" || !raw.id.trim()) return null;
   const f = raw as unknown as Fisa;
+  const optStr = (v: unknown): string | undefined =>
+    typeof v === "string" && v ? v : undefined;
   return {
     ...f,
     contentLocale: resolveContentLocale(f),
+    // Soft-normalize optional image fields — ignore non-string junk
+    photoDataUrl: optStr(raw.photoDataUrl),
+    audioNoteDataUrl: optStr(raw.audioNoteDataUrl),
+    semnaturaClientDataUrl: optStr(raw.semnaturaClientDataUrl),
+    semnaturaTehnicianDataUrl: optStr(raw.semnaturaTehnicianDataUrl),
   };
 }
 

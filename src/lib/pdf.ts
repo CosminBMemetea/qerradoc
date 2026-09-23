@@ -223,6 +223,36 @@ function boxedText(
   doc.text(lines.slice(0, maxLines), x + pad, y + pad + fontSize * 0.35);
 }
 
+
+type ReadySig = { dataUrl: string; format: "PNG" | "JPEG" };
+
+/** Draw a signature PNG/JPEG keeping aspect within maxW×maxH (mm). */
+function drawSignatureImage(
+  doc: jsPDF,
+  sig: ReadySig,
+  x: number,
+  y: number,
+  maxW: number,
+  maxH: number
+): { w: number; h: number } {
+  try {
+    const props = doc.getImageProperties(sig.dataUrl);
+    const aspect =
+      props.width && props.height ? props.width / props.height : 2.5;
+    let w = maxW;
+    let h = w / aspect;
+    if (h > maxH) {
+      h = maxH;
+      w = h * aspect;
+    }
+    if (w < 1 || h < 1) return { w: 0, h: 0 };
+    doc.addImage(sig.dataUrl, sig.format, x, y, w, h);
+    return { w, h };
+  } catch {
+    return { w: 0, h: 0 };
+  }
+}
+
 /**
  * Generate A4 service sheet PDF.
  * Callers must pass fisa.contentLocale (via resolveContentLocale), not the UI locale —
@@ -243,6 +273,15 @@ export async function generateFisaPdf(
   const margin = 8;
   const contentW = pageW - 2 * margin;
   let y = 7;
+
+  let clientSigImg: ReadySig | null = null;
+  let techSigImg: ReadySig | null = null;
+  if (fisa.semnaturaClientDataUrl) {
+    clientSigImg = await ensurePdfCompatibleImage(fisa.semnaturaClientDataUrl);
+  }
+  if (fisa.semnaturaTehnicianDataUrl) {
+    techSigImg = await ensurePdfCompatibleImage(fisa.semnaturaTehnicianDataUrl);
+  }
 
   const company =
     settings.companyName?.trim() ||
@@ -589,24 +628,33 @@ export async function generateFisaPdf(
     L.dataAnuntarii,
     fisa.dataAnuntarii || ""
   );
+  const clientBoxX = margin + col3 + gap;
+  const techBoxX = margin + 2 * (col3 + gap);
   drawLabeledBox(
-    margin + col3 + gap,
+    clientBoxX,
     y,
     col3,
     blockH,
     L.clientReceptionare,
-    fisa.semnaturaClient || "",
+    clientSigImg ? "" : fisa.semnaturaClient || "",
     L.clientSigHint
   );
   drawLabeledBox(
-    margin + 2 * (col3 + gap),
+    techBoxX,
     y,
     col3,
     blockH,
     L.tehnicieni,
-    fisa.semnaturaTehnician || "",
+    techSigImg ? "" : fisa.semnaturaTehnician || "",
     L.techSigHint
   );
+  // Ink inside mid sign-off boxes when drawn signatures exist
+  if (clientSigImg) {
+    drawSignatureImage(doc, clientSigImg, clientBoxX + 1.5, y + 4, col3 - 3, 8);
+  }
+  if (techSigImg) {
+    drawSignatureImage(doc, techSigImg, techBoxX + 1.5, y + 4, col3 - 3, 8);
+  }
   y += blockH + 2.5;
 
   drawLabeledBox(
@@ -649,26 +697,52 @@ export async function generateFisaPdf(
   });
   y += motH + 4;
 
-  // Signature underline lines (extra clarity)
-  if (y > pageH - 16) {
+  // Signature underline lines (+ drawn ink when present)
+  const sigMaxW = 60; // mm (~50–70)
+  const sigMaxH = 22;
+  const hasDrawnSig = !!(clientSigImg || techSigImg);
+  const sigBlockH = hasDrawnSig ? sigMaxH + 14 : 16;
+  if (y > pageH - sigBlockH - 8) {
     doc.addPage();
     y = 14;
   }
   doc.setFont(pdfFont(), "normal");
   doc.setFontSize(7);
   doc.setDrawColor(60);
-  doc.line(margin, y + 6, margin + 70, y + 6);
-  doc.text((L.clientReceptionare), margin, y);
-  doc.line(margin + contentW - 70, y + 6, margin + contentW, y + 6);
-  doc.text((L.tehnicieni), margin + contentW - 70, y);
+  const leftSigX = margin;
+  const rightSigX = margin + contentW - 70;
+  doc.text((L.clientReceptionare), leftSigX, y);
+  doc.text((L.tehnicieni), rightSigX, y);
+  let inkY = y + 2;
+  if (clientSigImg) {
+    const drawn = drawSignatureImage(
+      doc,
+      clientSigImg,
+      leftSigX,
+      inkY,
+      sigMaxW,
+      sigMaxH
+    );
+    if (drawn.h > 0) inkY = Math.max(inkY, y + 2 + drawn.h);
+  }
+  if (techSigImg) {
+    const drawn = drawSignatureImage(
+      doc,
+      techSigImg,
+      rightSigX,
+      y + 2,
+      sigMaxW,
+      sigMaxH
+    );
+    if (drawn.h > 0) inkY = Math.max(inkY, y + 2 + drawn.h);
+  }
+  const lineY = hasDrawnSig ? inkY + 1 : y + 6;
+  doc.line(leftSigX, lineY, leftSigX + 70, lineY);
+  doc.line(rightSigX, lineY, margin + contentW, lineY);
   doc.setFontSize(6);
   doc.setTextColor(100);
-  doc.text((fisa.semnaturaClient || ""), margin, y + 9);
-  doc.text(
-    (fisa.semnaturaTehnician || ""),
-    margin + contentW - 70,
-    y + 9
-  );
+  doc.text((fisa.semnaturaClient || ""), leftSigX, lineY + 3.5);
+  doc.text((fisa.semnaturaTehnician || ""), rightSigX, lineY + 3.5);
   doc.setTextColor(20);
 
   // Footer on each page

@@ -14,6 +14,7 @@ import { currencySymbol } from "@/lib/currency";
 import { getCatalogClients, getCatalogEquipment } from "@/lib/db";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
+import SignaturePad from "./SignaturePad";
 
 export default function FisaForm({
   fisa,
@@ -433,6 +434,13 @@ export default function FisaForm({
           onChange={(e) => set("semnaturaClient", e.target.value)}
           placeholder={t("form.semnaturaClientPh")}
         />
+        <SignaturePad
+          value={fisa.semnaturaClientDataUrl || ""}
+          onChange={(url) =>
+            set("semnaturaClientDataUrl", url ? url : undefined)
+          }
+          ariaLabel={t("sig.clientPad")}
+        />
       </Field>
 
       <Field label={t("form.semnaturaTehnician")} hint={t("hint.semnaturi")}>
@@ -440,6 +448,13 @@ export default function FisaForm({
           className={inputCls}
           value={fisa.semnaturaTehnician}
           onChange={(e) => set("semnaturaTehnician", e.target.value)}
+        />
+        <SignaturePad
+          value={fisa.semnaturaTehnicianDataUrl || ""}
+          onChange={(url) =>
+            set("semnaturaTehnicianDataUrl", url ? url : undefined)
+          }
+          ariaLabel={t("sig.techPad")}
         />
       </Field>
     </div>

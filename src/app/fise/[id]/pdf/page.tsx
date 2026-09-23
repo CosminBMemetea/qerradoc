@@ -247,6 +247,41 @@ export default function PdfPage() {
             </span>
             {fisa.piese.filter((p) => p.denumire).length} {L.pieseLines}
           </div>
+          {(fisa.semnaturaClient ||
+            fisa.semnaturaTehnician ||
+            fisa.semnaturaClientDataUrl ||
+            fisa.semnaturaTehnicianDataUrl) && (
+            <div className="pt-2 space-y-2">
+              <div>
+                <span className="text-stone-400 dark:text-stone-500">
+                  {L.clientSig}{" "}
+                </span>
+                {fisa.semnaturaClient || "—"}
+                {fisa.semnaturaClientDataUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={fisa.semnaturaClientDataUrl}
+                    alt=""
+                    className="mt-1 h-12 max-w-[10rem] object-contain rounded-lg bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-700"
+                  />
+                )}
+              </div>
+              <div>
+                <span className="text-stone-400 dark:text-stone-500">
+                  {L.techSig}{" "}
+                </span>
+                {fisa.semnaturaTehnician || "—"}
+                {fisa.semnaturaTehnicianDataUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={fisa.semnaturaTehnicianDataUrl}
+                    alt=""
+                    className="mt-1 h-12 max-w-[10rem] object-contain rounded-lg bg-white dark:bg-stone-950 border border-stone-200 dark:border-stone-700"
+                  />
+                )}
+              </div>
+            </div>
+          )}
           {fisa.photoDataUrl && (
             <div className="pt-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}

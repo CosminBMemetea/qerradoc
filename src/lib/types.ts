@@ -47,6 +47,10 @@ export interface Fisa {
   motiveInlocuire: string;
   semnaturaClient: string;
   semnaturaTehnician: string;
+  /** PNG data URL from on-device SignaturePad (client). */
+  semnaturaClientDataUrl?: string;
+  /** PNG data URL from on-device SignaturePad (technician). */
+  semnaturaTehnicianDataUrl?: string;
   photoDataUrl?: string;
   /** Optional voice note (MediaRecorder data URL) when speech-to-text fails */
   audioNoteDataUrl?: string;

@@ -14,6 +14,8 @@ export type DocSummaryLabels = {
   pieseLines: string;
   yes: string;
   no: string;
+  clientSig: string;
+  techSig: string;
   tip: Record<TipFisa, string>;
 };
 
@@ -31,6 +33,8 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     pieseLines: "linii",
     yes: "DA",
     no: "NU",
+    clientSig: "Semnătură client:",
+    techSig: "Semnătură tehnician:",
     tip: {
       Constatare: "Constatare",
       "Reparație": "Reparație",
@@ -51,6 +55,8 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     pieseLines: "lines",
     yes: "YES",
     no: "NO",
+    clientSig: "Client signature:",
+    techSig: "Technician signature:",
     tip: {
       Constatare: "Inspection",
       "Reparație": "Repair",
@@ -71,6 +77,8 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     pieseLines: "pozycji",
     yes: "TAK",
     no: "NIE",
+    clientSig: "Podpis klienta:",
+    techSig: "Podpis technika:",
     tip: {
       Constatare: "Ekspertyza",
       "Reparație": "Naprawa",
