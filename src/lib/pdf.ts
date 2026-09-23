@@ -4,6 +4,7 @@ import { jsPDF } from "jspdf";
 import type { Fisa, FirmSettings, TipFisa } from "./types";
 import { firmExample } from "./defaults";
 import { embedUnicodeFont, pdfFont } from "./pdf-font";
+import { currencyCode, currencySymbol } from "./currency";
 
 export type PdfLocale = "ro" | "en" | "pl";
 
@@ -46,10 +47,10 @@ const LABELS: Record<PdfLocale, Labels> = {
   ro: {
     docIdentity: "",
     tipBoxes: [
-      "FISA DE CONSTATARE",
-      "FISA DE REPARATIE",
-      "FISA DE REVIZIE",
-      "PUNERE IN FUNCTIUNE",
+      "FIȘĂ DE CONSTATARE",
+      "FIȘĂ DE REPARAȚIE",
+      "FIȘĂ DE REVIZIE",
+      "PUNERE ÎN FUNCȚIUNE",
     ],
     nrFisa: "Nr.Fisa",
     proprietar: "PROPRIETAR",
@@ -68,7 +69,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "DENUMIRE PIESA/MATERIAL",
     colCod: "COD",
     colCant: "Cant.",
-    colPret: "PRET € FARA Tva/buc.",
+    colPret: `PREȚ ${currencySymbol("ro")} FĂRĂ Tva/buc.`,
     dataAnuntarii: "DATA ANUNTARII DEFECTIUNII",
     clientReceptionare: "CLIENT: RECEPTIONARE CONSTATARE/REPARATIE",
     clientSigHint: "SEMNATURA/STAMPILA/NUME/B.I./C.I.",
@@ -79,8 +80,8 @@ const LABELS: Record<PdfLocale, Labels> = {
     motive:
       "Piesele mentionate, au fost inlocuite din urmatoarele motive:",
     foto: "FOTO UTILAJ",
-    footer: "Generat cu Querra Fisa",
-    currencyNote: "EUR",
+    footer: "Generat cu Querra Fișă",
+    currencyNote: currencyCode("ro"),
   },
   en: {
     docIdentity: "Engineer's Job Sheet / Service Report",
@@ -107,7 +108,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "Description",
     colCod: "Part No",
     colCant: "Qty",
-    colPret: "Price £/€ ex VAT each",
+    colPret: `Price ${currencySymbol("en")} ex VAT each`,
     dataAnuntarii: "Date fault reported",
     clientReceptionare: "Customer sign-off",
     clientSigHint: "Signature / name / company stamp",
@@ -118,7 +119,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     motive: "Parts listed above were replaced for the following reasons:",
     foto: "Asset photo",
     footer: "Generated with Querra Job Sheet",
-    currencyNote: "GBP/EUR",
+    currencyNote: currencyCode("en"),
   },
   pl: {
     docIdentity: "Protokół serwisowy / przyjęcia do naprawy",
@@ -145,7 +146,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "Nazwa części/materiału",
     colCod: "Kod",
     colCant: "Il.",
-    colPret: "Cena € bez VAT/szt.",
+    colPret: `Cena ${currencySymbol("pl")} bez VAT/szt.`,
     dataAnuntarii: "Data zgłoszenia",
     clientReceptionare: "Podpis klienta",
     clientSigHint: "Podpis / pieczęć / imię i nazwisko",
@@ -155,8 +156,8 @@ const LABELS: Record<PdfLocale, Labels> = {
     observatii: "Uwagi / wykonane prace",
     motive: "Wymienione części zostały zastąpione z następujących powodów:",
     foto: "Zdjęcie urządzenia",
-    footer: "Wygenerowano w Querra Fisa",
-    currencyNote: "EUR",
+    footer: "Wygenerowano w Querra Karta",
+    currencyNote: currencyCode("pl"),
   },
 };
 

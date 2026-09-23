@@ -94,7 +94,7 @@ function buildDemoCurateniePl(technicianName?: string): Fisa {
     tip: "Reparație",
     nrFisa: "CZ-2026-0187",
     proprietar: "CleanPro Wrocław Sp. z o.o.",
-    client: "Hotel Piast — Dział Housekeeping",
+    client: "Hotel Piast — Dział sprzątania",
     locatie: "ul. Świdnicka 15, Wrocław (magazyn sprzętu, poziom -1)",
     modelUtilaj: "Kärcher B 60 W Bp Pack Dose",
     serie: "1.384-020.0 / SN KB60-2024-77103",
@@ -116,7 +116,7 @@ function buildDemoCurateniePl(technicianName?: string): Fisa {
       "Wymieniono HEPA + szczotkę + pasek. Test ssania na dywanie: OK. Instruktaż: opróżniać zbiornik po każdej zmianie, sprawdzać filtr co tydzień. Następny przegląd zalecany przy 2000 h.",
     motiveInlocuire:
       "Filtr HEPA zatkany (>90% nasycenia) — niedostateczne ssanie. Szczotka zużyta na 40% długości. Pęknięty pasek — hałas i utrata momentu.",
-    semnaturaClient: "Anna Kowalska (Kierownik Housekeeping)",
+    semnaturaClient: "Anna Kowalska (Kierownik ds. utrzymania czystości)",
     semnaturaTehnician: technicianName || "Piotr Nowak",
     templateKind: "curatenie",
     reviewed: true,

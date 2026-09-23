@@ -3,6 +3,7 @@
 import type { Fisa, TipFisa } from "@/lib/types";
 import { TIPURI } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
+import { currencySymbol } from "@/lib/currency";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
 
@@ -13,7 +14,7 @@ export default function FisaForm({
   fisa: Fisa;
   onChange: (f: Fisa) => void;
 }) {
-  const { t, dateLang } = useI18n();
+  const { t, dateLang, locale } = useI18n();
   const set = <K extends keyof Fisa>(key: K, value: Fisa[K]) =>
     onChange({ ...fisa, [key]: value });
 
@@ -231,7 +232,7 @@ export default function FisaForm({
                 />
                 <input
                   className={inputCls}
-                  placeholder={t("form.pret")}
+                  placeholder={t("form.pret", { currency: currencySymbol(locale) })}
                   inputMode="decimal"
                   value={p.pretEur}
                   onChange={(e) => setPiesa(idx, "pretEur", e.target.value)}
