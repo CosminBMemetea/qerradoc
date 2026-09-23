@@ -128,6 +128,17 @@ export default function AppShell({
               ←
             </button>
           )}
+          {!backHref && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/icons/icon-192.png"
+              alt=""
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-lg shrink-0 shadow-sm"
+              draggable={false}
+            />
+          )}
           <div className="flex-1 min-w-0">
             <h1 className="text-[17px] font-semibold tracking-tight truncate text-foreground">
               {title || t("app.name")}

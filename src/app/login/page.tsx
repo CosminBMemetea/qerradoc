@@ -81,6 +81,15 @@ export default function LoginPage() {
         </div>
 
         <div className="text-center mb-10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/logo.png"
+            alt=""
+            width={88}
+            height={88}
+            className="mx-auto mb-5 h-[88px] w-[88px] rounded-[22px] shadow-md shadow-indigo-500/20"
+            draggable={false}
+          />
           <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-indigo-600 dark:text-indigo-400 mb-3">
             Querra
           </p>
