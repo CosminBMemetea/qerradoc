@@ -39,7 +39,12 @@ export default function LoginPage() {
     try {
       const lic = await getLicense();
       const settings = await getSettings();
-      await saveSettings({ ...settings, companyName: firm.trim() });
+      const existing = settings.companyName?.trim() || "";
+      // Seed PDF firm name only when empty / still a demo placeholder —
+      // never overwrite a custom name the user set in Setări.
+      if (!existing || isFirmExample(existing)) {
+        await saveSettings({ ...settings, companyName: firm.trim() });
+      }
       await saveSession({
         firmName: firm.trim(),
         technicianName: tech.trim(),

@@ -5,6 +5,7 @@ import type { Fisa, FirmSettings, TipFisa } from "./types";
 import { firmExample } from "./defaults";
 import { embedUnicodeFont, pdfFont } from "./pdf-font";
 import { currencyCode, currencySymbol } from "./currency";
+import { ensurePdfCompatibleImage } from "./logo";
 
 export type PdfLocale = "ro" | "en" | "pl";
 
@@ -248,33 +249,10 @@ export async function generateFisaPdf(
 
   // —— Header band ——
   const headerTop = y;
-  const headerH = 18;
-  doc.setDrawColor(30);
-  doc.setLineWidth(0.4);
-  doc.rect(margin, headerTop, contentW, headerH);
+  const pad = 2;
+  const logoMaxH = 20; // mm (~18–22)
+  const logoMaxW = 36; // mm
 
-  if (settings.logoDataUrl) {
-    try {
-      doc.addImage(
-        settings.logoDataUrl,
-        "JPEG",
-        margin + 1.5,
-        headerTop + 1.5,
-        16,
-        14
-      );
-    } catch {
-      /* ignore bad logo */
-    }
-  }
-
-  doc.setFont(pdfFont(), "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(20);
-  doc.text((company), pageW / 2, headerTop + 6, { align: "center" });
-
-  doc.setFont(pdfFont(), "normal");
-  doc.setFontSize(7);
   const subBits: string[] = [];
   if (L.docIdentity) subBits.push(L.docIdentity);
   if (settings.cui) {
@@ -288,12 +266,108 @@ export async function generateFisaPdf(
   }
   if (settings.address) subBits.push(settings.address);
   if (settings.phone) subBits.push(settings.phone);
-  if (subBits.length) {
-    doc.text((subBits.join("  ·  ")), pageW / 2, headerTop + 11.5, {
-      align: "center",
-      maxWidth: contentW - 40,
-    });
+
+  let logoDrawn = false;
+  let logoW = 0;
+  let logoH = 0;
+  let logoFmt: "PNG" | "JPEG" | null = null;
+  let logoUrl: string | null = null;
+
+  if (settings.logoDataUrl) {
+    const ready = await ensurePdfCompatibleImage(settings.logoDataUrl);
+    if (ready) {
+      logoUrl = ready.dataUrl;
+      logoFmt = ready.format;
+      try {
+        const props = doc.getImageProperties(logoUrl);
+        const aspect =
+          props.width && props.height ? props.width / props.height : 1;
+        logoH = logoMaxH;
+        logoW = logoH * aspect;
+        if (logoW > logoMaxW) {
+          logoW = logoMaxW;
+          logoH = logoW / aspect;
+        }
+      } catch {
+        logoW = 22;
+        logoH = 18;
+      }
+    }
   }
+
+  // Taller header when logo is present so text doesn't clip
+  const headerH = logoUrl
+    ? Math.max(24, logoH + pad * 2 + 1)
+    : subBits.length > 2
+      ? 20
+      : 18;
+
+  doc.setDrawColor(30);
+  doc.setLineWidth(0.4);
+  doc.rect(margin, headerTop, contentW, headerH);
+
+  if (logoUrl && logoFmt) {
+    try {
+      const lx = margin + pad;
+      const ly = headerTop + (headerH - logoH) / 2;
+      doc.addImage(logoUrl, logoFmt, lx, ly, logoW, logoH);
+      logoDrawn = true;
+    } catch {
+      logoDrawn = false;
+    }
+  }
+
+  doc.setTextColor(20);
+
+  if (logoDrawn) {
+    const textX = margin + pad + logoW + 3;
+    const textMaxW = contentW - (logoW + pad + 3) - pad;
+    const textCenterX = textX + textMaxW / 2;
+
+    doc.setFont(pdfFont(), "bold");
+    doc.setFontSize(10);
+    const nameLines = doc.splitTextToSize(company, textMaxW);
+    const nameBlockH = nameLines.length * 4.2;
+    const subLine = subBits.length ? subBits.join("  ·  ") : "";
+    const subLines = subLine
+      ? doc.splitTextToSize(subLine, textMaxW)
+      : [];
+    doc.setFontSize(7);
+    const subBlockH = subLines.length * 3.2;
+    const blockH = nameBlockH + (subLines.length ? 1.2 + subBlockH : 0);
+    let ty = headerTop + Math.max(pad + 1, (headerH - blockH) / 2) + 3.2;
+
+    doc.setFont(pdfFont(), "bold");
+    doc.setFontSize(10);
+    doc.text(nameLines.slice(0, 2), textCenterX, ty, {
+      align: "center",
+      maxWidth: textMaxW,
+    });
+    ty += Math.min(nameLines.length, 2) * 4.2 + 1.2;
+
+    if (subLines.length) {
+      doc.setFont(pdfFont(), "normal");
+      doc.setFontSize(7);
+      doc.text(subLines.slice(0, 3), textCenterX, ty, {
+        align: "center",
+        maxWidth: textMaxW,
+      });
+    }
+  } else {
+    doc.setFont(pdfFont(), "bold");
+    doc.setFontSize(10);
+    doc.text(company, pageW / 2, headerTop + 6, { align: "center" });
+
+    if (subBits.length) {
+      doc.setFont(pdfFont(), "normal");
+      doc.setFontSize(7);
+      doc.text(subBits.join("  ·  "), pageW / 2, headerTop + 11.5, {
+        align: "center",
+        maxWidth: contentW - 8,
+      });
+    }
+  }
+
   y = headerTop + headerH + 3;
 
   // —— Left tip checkboxes + right meta ——

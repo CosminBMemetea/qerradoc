@@ -172,9 +172,9 @@ const ro: Dict = {
   "pdf.defaultCompany": "UTILAJE PROFESIONALE PENTRU CURĂȚENIE",
 
   "settings.title": "Setări firmă",
-  "settings.companyName": "Nume firmă (antet PDF)",
+  "settings.companyName": "Nume firmă",
   "settings.companyInfo": "Numele firmei tale de service (apare pe PDF). Exemplu e doar demo — înlocuiește-l.",
-  "settings.cui": "CUI (stub)",
+  "settings.cui": "CUI",
   "settings.address": "Adresă",
   "settings.phone": "Telefon",
   "settings.logo": "Logo firmă",
@@ -187,6 +187,12 @@ const ro: Dict = {
   "settings.themeLight": "Deschis",
   "settings.themeDark": "Întunecat",
   "settings.appearance": "Aspect",
+  "settings.pdfHeader": "Antet PDF",
+  "settings.pdfHeaderHint": "Datele firmei și logo-ul apar în antetul fișei PDF.",
+  "settings.pdfPreview": "Previzualizare antet",
+  "settings.logoTip": "Logo-ul apare în stânga antetului PDF (redimensionat automat).",
+  "settings.logoBusy": "Se procesează logo…",
+  "settings.logoErr": "Nu am putut încărca logo-ul. Încearcă PNG sau JPEG.",
 
   "license.title": "Licență",
   "license.pricing":
@@ -417,9 +423,9 @@ const en: Dict = {
   "pdf.defaultCompany": "PROFESSIONAL CLEANING EQUIPMENT LTD",
 
   "settings.title": "Company settings",
-  "settings.companyName": "Company name (PDF header)",
+  "settings.companyName": "Company name",
   "settings.companyInfo": "Your service company name (shows on the PDF). The example is demo only — replace it.",
-  "settings.cui": "Tax ID (stub)",
+  "settings.cui": "Company No.",
   "settings.address": "Address",
   "settings.phone": "Phone",
   "settings.logo": "Company logo",
@@ -432,6 +438,12 @@ const en: Dict = {
   "settings.themeLight": "Light",
   "settings.themeDark": "Dark",
   "settings.appearance": "Appearance",
+  "settings.pdfHeader": "PDF header",
+  "settings.pdfHeaderHint": "Company details and logo appear on the PDF sheet header.",
+  "settings.pdfPreview": "Header preview",
+  "settings.logoTip": "The logo appears on the left of the PDF header (auto-resized).",
+  "settings.logoBusy": "Processing logo…",
+  "settings.logoErr": "Could not load the logo. Try PNG or JPEG.",
 
   "license.title": "License",
   "license.pricing":
@@ -663,9 +675,9 @@ const pl: Dict = {
   "pdf.defaultCompany": "PROFESJONALNE MASZYNY CZYSZCZĄCE SP. Z O.O.",
 
   "settings.title": "Ustawienia firmy",
-  "settings.companyName": "Nazwa firmy (nagłówek PDF)",
+  "settings.companyName": "Nazwa firmy",
   "settings.companyInfo": "Nazwa Twojej firmy serwisowej (na PDF). Przykład jest tylko demo — zamień go.",
-  "settings.cui": "NIP (stub)",
+  "settings.cui": "NIP",
   "settings.address": "Adres",
   "settings.phone": "Telefon",
   "settings.logo": "Logo firmy",
@@ -678,6 +690,12 @@ const pl: Dict = {
   "settings.themeLight": "Jasny",
   "settings.themeDark": "Ciemny",
   "settings.appearance": "Wygląd",
+  "settings.pdfHeader": "Nagłówek PDF",
+  "settings.pdfHeaderHint": "Dane firmy i logo pojawiają się w nagłówku karty PDF.",
+  "settings.pdfPreview": "Podgląd nagłówka",
+  "settings.logoTip": "Logo pojawia się po lewej stronie nagłówka PDF (automatycznie skalowane).",
+  "settings.logoBusy": "Przetwarzanie logo…",
+  "settings.logoErr": "Nie udało się wczytać logo. Spróbuj PNG lub JPEG.",
 
   "license.title": "Licencja",
   "license.pricing":

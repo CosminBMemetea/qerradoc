@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { Field, inputCls } from "@/components/Field";
-import { getSettings, saveSettings } from "@/lib/db";
+import { getSettings, saveSettings, getSession } from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
-import { firmExample, cuiExample } from "@/lib/defaults";
+import { firmExample, cuiExample, isFirmExample } from "@/lib/defaults";
+import { readAndCompressLogo } from "@/lib/logo";
 
 export default function SetariPage() {
   const { t, locale, setLocale } = useI18n();
@@ -20,24 +21,40 @@ export default function SetariPage() {
     phone: "",
   });
   const [msg, setMsg] = useState("");
+  const [logoBusy, setLogoBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    getSettings().then(setS);
+    Promise.all([getSettings(), getSession()]).then(([settings, session]) => {
+      const name = settings.companyName?.trim() || "";
+      // Seed from session firm when settings name is empty / still a demo example
+      if ((!name || isFirmExample(name)) && session?.firmName?.trim()) {
+        setS({ ...settings, companyName: session.firmName.trim() });
+      } else {
+        setS(settings);
+      }
+    });
   }, []);
 
   async function onSave() {
+    // Save firm settings only — do not overwrite login session
     await saveSettings(s);
     setMsg(t("settings.saved"));
   }
 
-  function onLogo(file: File | undefined) {
+  async function onLogo(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setS((prev) => ({ ...prev, logoDataUrl: String(reader.result) }));
-    };
-    reader.readAsDataURL(file);
+    setLogoBusy(true);
+    setMsg("");
+    try {
+      const dataUrl = await readAndCompressLogo(file);
+      setS((prev) => ({ ...prev, logoDataUrl: dataUrl }));
+    } catch {
+      setMsg(t("settings.logoErr"));
+    } finally {
+      setLogoBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
   }
 
   return (
@@ -96,6 +113,35 @@ export default function SetariPage() {
       </div>
 
       <div className="qf-card p-5 mb-2">
+        <h2 className="text-sm font-semibold text-foreground mb-1">
+          {t("settings.pdfHeader")}
+        </h2>
+        <p className="text-xs text-muted mb-4 leading-relaxed">
+          {t("settings.pdfHeaderHint")}
+        </p>
+
+        {/* One-line PDF preview strip */}
+        <div className="mb-4 rounded-xl border border-border bg-stone-50 dark:bg-stone-900/60 px-3 py-2.5 flex items-center gap-3 min-h-[52px]">
+          {s.logoDataUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={s.logoDataUrl}
+              alt=""
+              className="h-10 w-10 object-contain rounded-lg border border-border bg-white shrink-0"
+            />
+          ) : (
+            <div className="h-10 w-10 rounded-lg border border-dashed border-stone-300 dark:border-stone-600 shrink-0" />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] uppercase tracking-wide text-stone-400 dark:text-stone-500 font-semibold">
+              {t("settings.pdfPreview")}
+            </p>
+            <p className="text-sm font-semibold text-foreground truncate">
+              {s.companyName?.trim() || firmExample(locale)}
+            </p>
+          </div>
+        </div>
+
         <Field
           label={t("settings.companyName")}
           info={t("settings.companyInfo")}
@@ -134,24 +180,30 @@ export default function SetariPage() {
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/*"
             className="hidden"
             onChange={(e) => onLogo(e.target.files?.[0])}
           />
           <BigButton
             variant="secondary"
             onClick={() => fileRef.current?.click()}
+            disabled={logoBusy}
           >
-            {t("settings.uploadLogo")}
+            {logoBusy ? t("settings.logoBusy") : t("settings.uploadLogo")}
           </BigButton>
           {s.logoDataUrl && (
-            <div className="mt-3 flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={s.logoDataUrl}
-                alt="Logo"
-                className="h-16 w-16 object-contain rounded-xl border border-border"
-              />
+            <div className="mt-3 space-y-2">
+              <div className="rounded-2xl border border-border bg-white dark:bg-stone-900 p-4 flex items-center justify-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.logoDataUrl}
+                  alt="Logo"
+                  className="max-h-28 max-w-full object-contain"
+                />
+              </div>
+              <p className="text-xs text-muted leading-relaxed">
+                {t("settings.logoTip")}
+              </p>
               <button
                 type="button"
                 className="text-sm text-red-600 dark:text-red-400 font-medium min-h-[44px] px-2"
