@@ -32,6 +32,20 @@ export async function deleteFisa(id: string): Promise<void> {
   await del(FISA_PREFIX + id);
 }
 
+/** Write fișă as-is (keeps updatedAt) — used by backup restore. */
+export async function putFisa(fisa: Fisa): Promise<void> {
+  await set(FISA_PREFIX + fisa.id, withContentLocale(fisa));
+}
+
+/** Delete every stored fișă (settings / license / session untouched). */
+export async function clearAllFise(): Promise<void> {
+  const allKeys = await keys();
+  const fisaKeys = allKeys.filter(
+    (k) => typeof k === "string" && k.startsWith(FISA_PREFIX)
+  );
+  await Promise.all(fisaKeys.map((k) => del(k)));
+}
+
 export async function listFise(): Promise<Fisa[]> {
   const allKeys = await keys();
   const fisaKeys = allKeys.filter(

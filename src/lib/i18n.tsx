@@ -201,6 +201,19 @@ const ro: Dict = {
   "settings.logoBusy": "Se procesează logo…",
   "settings.logoErr": "Nu am putut încărca logo-ul. Încearcă PNG sau JPEG.",
 
+  "settings.backup": "Backup",
+  "settings.backupTip": "Datele stau doar pe acest telefon până la cloud. Fă backup înainte să ștergi datele din browser sau să schimbi telefonul. Restaurația înlocuiește toate fișele și setările firmei (nu face merge).",
+  "settings.backupExport": "Descarcă backup",
+  "settings.backupImport": "Restaurează din fișier",
+  "settings.backupExporting": "Se exportă…",
+  "settings.backupImporting": "Se restaurează…",
+  "settings.backupExported": "Backup descărcat ({count} fișe).",
+  "settings.backupRestored": "Restaurat: {count} fișe + setări firmă.",
+  "settings.backupConfirm": "Înlocuiești {count} fișe locale și setările firmei cu backup-ul ({backupCount} fișe)? Acțiunea nu se poate anula.",
+  "settings.backupInvalid": "Fișier invalid — alege un backup Querra (.json).",
+  "settings.backupHuge": "Fișierul e foarte mare ({mb} MB). Continuăm?",
+  "settings.backupErr": "Backup eșuat. Încearcă din nou.",
+
   "license.title": "Licență",
   "license.pricing":
     "Activare firmă · ~200 EUR / an (~999 RON) · până la ~5 tehnicieni",
@@ -458,6 +471,19 @@ const en: Dict = {
   "settings.logoTip": "The logo appears on the left of the PDF header (auto-resized).",
   "settings.logoBusy": "Processing logo…",
   "settings.logoErr": "Could not load the logo. Try PNG or JPEG.",
+
+  "settings.backup": "Backup",
+  "settings.backupTip": "Data stays only on this phone until cloud sync. Back up before clearing browser data or changing phones. Restore replaces all sheets and company settings (no merge).",
+  "settings.backupExport": "Download backup",
+  "settings.backupImport": "Restore from file",
+  "settings.backupExporting": "Exporting…",
+  "settings.backupImporting": "Restoring…",
+  "settings.backupExported": "Backup downloaded ({count} sheets).",
+  "settings.backupRestored": "Restored: {count} sheets + company settings.",
+  "settings.backupConfirm": "Replace {count} local sheets and company settings with this backup ({backupCount} sheets)? This cannot be undone.",
+  "settings.backupInvalid": "Invalid file — choose a Querra backup (.json).",
+  "settings.backupHuge": "This file is very large ({mb} MB). Continue?",
+  "settings.backupErr": "Backup failed. Try again.",
 
   "license.title": "License",
   "license.pricing":
@@ -717,6 +743,19 @@ const pl: Dict = {
   "settings.logoTip": "Logo pojawia się po lewej stronie nagłówka PDF (automatycznie skalowane).",
   "settings.logoBusy": "Przetwarzanie logo…",
   "settings.logoErr": "Nie udało się wczytać logo. Spróbuj PNG lub JPEG.",
+
+  "settings.backup": "Kopia zapasowa",
+  "settings.backupTip": "Dane są tylko na tym telefonie do czasu chmury. Zrób kopię przed wyczyszczeniem danych przeglądarki lub zmianą telefonu. Przywrócenie zastępuje wszystkie karty i ustawienia firmy (bez scalania).",
+  "settings.backupExport": "Pobierz kopię",
+  "settings.backupImport": "Przywróć z pliku",
+  "settings.backupExporting": "Eksportowanie…",
+  "settings.backupImporting": "Przywracanie…",
+  "settings.backupExported": "Kopia pobrana ({count} kart).",
+  "settings.backupRestored": "Przywrócono: {count} kart + ustawienia firmy.",
+  "settings.backupConfirm": "Zastąpić {count} lokalnych kart i ustawienia firmy kopią ({backupCount} kart)? Tej operacji nie można cofnąć.",
+  "settings.backupInvalid": "Nieprawidłowy plik — wybierz kopię Querra (.json).",
+  "settings.backupHuge": "Plik jest bardzo duży ({mb} MB). Kontynuować?",
+  "settings.backupErr": "Kopia nieudana. Spróbuj ponownie.",
 
   "license.title": "Licencja",
   "license.pricing":

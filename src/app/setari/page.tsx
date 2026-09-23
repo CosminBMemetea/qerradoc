@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { Field, inputCls } from "@/components/Field";
-import { getSettings, saveSettings, getSession } from "@/lib/db";
+import { getSettings, saveSettings, getSession, listFise } from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
 import { firmExample, cuiExample, isFirmExample } from "@/lib/defaults";
 import { readAndCompressLogo } from "@/lib/logo";
+import {
+  BACKUP_SIZE_WARN_BYTES,
+  exportBackupDownload,
+  parseBackupJson,
+  readFileAsText,
+  restoreBackupReplaceAll,
+} from "@/lib/backup";
 
 export default function SetariPage() {
   const { t, locale, setLocale } = useI18n();
   const { theme, setTheme } = useTheme();
+  const router = useRouter();
   const [s, setS] = useState<FirmSettings>({
     companyName: "",
     cui: "",
@@ -22,7 +31,11 @@ export default function SetariPage() {
   });
   const [msg, setMsg] = useState("");
   const [logoBusy, setLogoBusy] = useState(false);
+  const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(
+    null
+  );
   const fileRef = useRef<HTMLInputElement>(null);
+  const backupRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     Promise.all([getSettings(), getSession()]).then(([settings, session]) => {
@@ -54,6 +67,60 @@ export default function SetariPage() {
     } finally {
       setLogoBusy(false);
       if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function onExportBackup() {
+    setBackupBusy("export");
+    setMsg("");
+    try {
+      const { count } = await exportBackupDownload();
+      setMsg(t("settings.backupExported", { count }));
+    } catch {
+      setMsg(t("settings.backupErr"));
+    } finally {
+      setBackupBusy(null);
+    }
+  }
+
+  async function onImportBackup(file: File | undefined) {
+    if (!file) return;
+    setBackupBusy("import");
+    setMsg("");
+    try {
+      if (file.size > BACKUP_SIZE_WARN_BYTES) {
+        const mb = (file.size / (1024 * 1024)).toFixed(1);
+        if (!confirm(t("settings.backupHuge", { mb }))) {
+          return;
+        }
+      }
+
+      const text = await readFileAsText(file);
+      const parsed = parseBackupJson(text);
+      if (!parsed.ok) {
+        setMsg(t("settings.backupInvalid"));
+        return;
+      }
+
+      const local = await listFise();
+      const ok = confirm(
+        t("settings.backupConfirm", {
+          count: local.length,
+          backupCount: parsed.data.fise.length,
+        })
+      );
+      if (!ok) return;
+
+      const { fiseCount } = await restoreBackupReplaceAll(parsed.data);
+      const settings = await getSettings();
+      setS(settings);
+      setMsg(t("settings.backupRestored", { count: fiseCount }));
+      router.push("/fise");
+    } catch {
+      setMsg(t("settings.backupErr"));
+    } finally {
+      setBackupBusy(null);
+      if (backupRef.current) backupRef.current.value = "";
     }
   }
 
@@ -219,6 +286,43 @@ export default function SetariPage() {
       <BigButton onClick={onSave} className="mt-4">
         {t("settings.save")}
       </BigButton>
+
+      <div className="qf-card p-5 mt-6 mb-2">
+        <h2 className="text-sm font-semibold text-foreground mb-1">
+          {t("settings.backup")}
+        </h2>
+        <p className="text-xs text-muted mb-4 leading-relaxed">
+          {t("settings.backupTip")}
+        </p>
+        <input
+          ref={backupRef}
+          type="file"
+          accept="application/json,.json,.querra.json"
+          className="hidden"
+          onChange={(e) => onImportBackup(e.target.files?.[0])}
+        />
+        <div className="space-y-3">
+          <BigButton
+            variant="secondary"
+            onClick={onExportBackup}
+            disabled={backupBusy !== null}
+          >
+            {backupBusy === "export"
+              ? t("settings.backupExporting")
+              : t("settings.backupExport")}
+          </BigButton>
+          <BigButton
+            variant="danger"
+            onClick={() => backupRef.current?.click()}
+            disabled={backupBusy !== null}
+          >
+            {backupBusy === "import"
+              ? t("settings.backupImporting")
+              : t("settings.backupImport")}
+          </BigButton>
+        </div>
+      </div>
+
       {msg && (
         <p className="text-center text-teal-800 dark:text-teal-300 font-medium mt-3 text-sm">
           {msg}
