@@ -130,3 +130,22 @@ export const TIPURI: TipFisa[] = [
   "Revizie",
   "Punere în funcțiune",
 ];
+
+/** Local catalog entry — client (on-device only). */
+export interface CatalogClient {
+  id: string;
+  name: string;
+  locatie?: string;
+  note?: string;
+  updatedAt: string;
+}
+
+/** Local catalog entry — equipment / utilaj (on-device only). */
+export interface CatalogEquipment {
+  id: string;
+  model: string;
+  serie?: string;
+  clientName?: string;
+  note?: string;
+  updatedAt: string;
+}

@@ -1,6 +1,13 @@
 "use client";
 
-import type { Fisa, FirmSettings, LicenseState, Session } from "./types";
+import type {
+  Fisa,
+  FirmSettings,
+  LicenseState,
+  Session,
+  CatalogClient,
+  CatalogEquipment,
+} from "./types";
 import { resolveContentLocale } from "./types";
 import {
   listFise,
@@ -12,10 +19,14 @@ import {
   saveSession,
   putFisa,
   deleteFisa,
+  getCatalogClients,
+  getCatalogEquipment,
+  saveCatalogClients,
+  saveCatalogEquipment,
 } from "./db";
 import { downloadBlob } from "./pdf";
 
-export const BACKUP_VERSION = 1;
+export const BACKUP_VERSION = 2;
 
 /** Warn in UI when backup JSON is larger than this (bytes). */
 export const BACKUP_SIZE_WARN_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -27,6 +38,10 @@ export type BackupPayload = {
   settings: FirmSettings;
   license?: LicenseState;
   session?: Session | null;
+  /** v2+: local client catalog (empty if absent in older backups). */
+  clients?: CatalogClient[];
+  /** v2+: local equipment catalog (empty if absent in older backups). */
+  equipment?: CatalogEquipment[];
 };
 
 export type BackupValidation =
@@ -58,6 +73,39 @@ function softNormalizeSettings(raw: unknown): FirmSettings | null {
     phone: typeof raw.phone === "string" ? raw.phone : undefined,
     logoDataUrl:
       typeof raw.logoDataUrl === "string" ? raw.logoDataUrl : undefined,
+  };
+}
+
+function softNormalizeClient(raw: unknown): CatalogClient | null {
+  if (!isPlainObject(raw)) return null;
+  if (typeof raw.id !== "string" || !raw.id.trim()) return null;
+  if (typeof raw.name !== "string" || !raw.name.trim()) return null;
+  return {
+    id: raw.id,
+    name: raw.name.trim(),
+    locatie: typeof raw.locatie === "string" ? raw.locatie : undefined,
+    note: typeof raw.note === "string" ? raw.note : undefined,
+    updatedAt:
+      typeof raw.updatedAt === "string" && raw.updatedAt
+        ? raw.updatedAt
+        : new Date().toISOString(),
+  };
+}
+
+function softNormalizeEquipment(raw: unknown): CatalogEquipment | null {
+  if (!isPlainObject(raw)) return null;
+  if (typeof raw.id !== "string" || !raw.id.trim()) return null;
+  if (typeof raw.model !== "string" || !raw.model.trim()) return null;
+  return {
+    id: raw.id,
+    model: raw.model.trim(),
+    serie: typeof raw.serie === "string" ? raw.serie : undefined,
+    clientName: typeof raw.clientName === "string" ? raw.clientName : undefined,
+    note: typeof raw.note === "string" ? raw.note : undefined,
+    updatedAt:
+      typeof raw.updatedAt === "string" && raw.updatedAt
+        ? raw.updatedAt
+        : new Date().toISOString(),
   };
 }
 
@@ -101,6 +149,29 @@ export function validateBackup(raw: unknown): BackupValidation {
     data.session = raw.session as unknown as Session;
   }
 
+  // v2 catalogs — optional so v1 backups still restore (empty catalogs)
+  if (Array.isArray(raw.clients)) {
+    const clients: CatalogClient[] = [];
+    for (const item of raw.clients) {
+      const c = softNormalizeClient(item);
+      if (c) clients.push(c);
+    }
+    data.clients = clients;
+  } else {
+    data.clients = [];
+  }
+
+  if (Array.isArray(raw.equipment)) {
+    const equipment: CatalogEquipment[] = [];
+    for (const item of raw.equipment) {
+      const e = softNormalizeEquipment(item);
+      if (e) equipment.push(e);
+    }
+    data.equipment = equipment;
+  } else {
+    data.equipment = [];
+  }
+
   return { ok: true, data };
 }
 
@@ -115,12 +186,15 @@ export function parseBackupJson(text: string): BackupValidation {
 }
 
 export async function buildBackup(): Promise<BackupPayload> {
-  const [fise, settings, license, session] = await Promise.all([
-    listFise(),
-    getSettings(),
-    getLicense(),
-    getSession(),
-  ]);
+  const [fise, settings, license, session, clients, equipment] =
+    await Promise.all([
+      listFise(),
+      getSettings(),
+      getLicense(),
+      getSession(),
+      getCatalogClients(),
+      getCatalogEquipment(),
+    ]);
   return {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
@@ -128,6 +202,8 @@ export async function buildBackup(): Promise<BackupPayload> {
     settings,
     license,
     session,
+    clients,
+    equipment,
   };
 }
 
@@ -152,9 +228,10 @@ export async function exportBackupDownload(): Promise<{
 }
 
 /**
- * Replace-all restore: write settings + all sheets from backup, then delete
- * local sheets that are not in the backup. contentLocale is kept as stored.
- * Does not wipe first (avoids empty half-state if write fails mid-way).
+ * Replace-all restore: write settings + all sheets + catalogs from backup,
+ * then delete local sheets that are not in the backup. contentLocale is kept
+ * as stored. Does not wipe first (avoids empty half-state if write fails mid-way).
+ * Older backups without catalogs restore empty catalogs.
  */
 export async function restoreBackupReplaceAll(
   data: BackupPayload
@@ -176,6 +253,9 @@ export async function restoreBackupReplaceAll(
       await deleteFisa(old.id);
     }
   }
+
+  await saveCatalogClients(data.clients ?? []);
+  await saveCatalogEquipment(data.equipment ?? []);
 
   if (data.license) {
     await saveLicense(data.license);

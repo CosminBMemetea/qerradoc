@@ -1,9 +1,17 @@
 "use client";
 
-import type { ContentLocale, Fisa, TipFisa } from "@/lib/types";
+import { useEffect, useId, useState } from "react";
+import type {
+  CatalogClient,
+  CatalogEquipment,
+  ContentLocale,
+  Fisa,
+  TipFisa,
+} from "@/lib/types";
 import { TIPURI, resolveContentLocale } from "@/lib/types";
 import { useI18n, LOCALE_LABELS } from "@/lib/i18n";
 import { currencySymbol } from "@/lib/currency";
+import { getCatalogClients, getCatalogEquipment } from "@/lib/db";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
 
@@ -15,7 +23,25 @@ export default function FisaForm({
   onChange: (f: Fisa) => void;
 }) {
   const { t, dateLang } = useI18n();
+  const clientListId = useId();
+  const equipListId = useId();
+  const [clients, setClients] = useState<CatalogClient[]>([]);
+  const [equipment, setEquipment] = useState<CatalogEquipment[]>([]);
   const contentLocale = resolveContentLocale(fisa);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getCatalogClients(), getCatalogEquipment()]).then(
+      ([c, e]) => {
+        if (cancelled) return;
+        setClients(c);
+        setEquipment(e);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const contentLocaleLabel =
     contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
   const set = <K extends keyof Fisa>(key: K, value: Fisa[K]) =>
@@ -121,9 +147,35 @@ export default function FisaForm({
       <Field label={t("form.client")} hint={t("hint.client")}>
         <input
           className={inputCls}
+          list={clientListId}
           value={fisa.client}
-          onChange={(e) => set("client", e.target.value)}
+          onChange={(e) => {
+            const name = e.target.value;
+            const match = clients.find(
+              (c) => c.name.toLowerCase() === name.trim().toLowerCase()
+            );
+            if (match) {
+              onChange({
+                ...fisa,
+                client: match.name,
+                locatie:
+                  !fisa.locatie.trim() && match.locatie
+                    ? match.locatie
+                    : fisa.locatie,
+              });
+            } else {
+              set("client", name);
+            }
+          }}
+          autoComplete="off"
         />
+        <datalist id={clientListId}>
+          {clients.map((c) => (
+            <option key={c.id} value={c.name}>
+              {c.locatie || undefined}
+            </option>
+          ))}
+        </datalist>
       </Field>
 
       <Field label={t("form.locatie")} hint={t("hint.locatie")}>
@@ -137,9 +189,52 @@ export default function FisaForm({
       <Field label={t("form.modelUtilaj")} hint={t("hint.modelUtilaj")}>
         <input
           className={inputCls}
+          list={equipListId}
           value={fisa.modelUtilaj}
-          onChange={(e) => set("modelUtilaj", e.target.value)}
+          onChange={(e) => {
+            const raw = e.target.value.trim();
+            const lower = raw.toLowerCase();
+            const byLabel = equipment.find(
+              (eq) =>
+                (eq.serie
+                  ? `${eq.model} · ${eq.serie}`
+                  : eq.model
+                ).toLowerCase() === lower
+            );
+            const byModel = byLabel
+              ? undefined
+              : equipment.find((eq) => eq.model.toLowerCase() === lower);
+            const match = byLabel || byModel;
+            if (match) {
+              onChange({
+                ...fisa,
+                modelUtilaj: match.model,
+                serie: byLabel
+                  ? match.serie || ""
+                  : !fisa.serie.trim() && match.serie
+                    ? match.serie
+                    : fisa.serie,
+                client:
+                  !fisa.client.trim() && match.clientName
+                    ? match.clientName
+                    : fisa.client,
+              });
+            } else {
+              set("modelUtilaj", e.target.value);
+            }
+          }}
+          autoComplete="off"
         />
+        <datalist id={equipListId}>
+          {equipment.map((eq) => (
+            <option
+              key={eq.id}
+              value={eq.serie ? `${eq.model} · ${eq.serie}` : eq.model}
+            >
+              {eq.clientName || undefined}
+            </option>
+          ))}
+        </datalist>
       </Field>
 
       <div className="grid grid-cols-2 gap-3">

@@ -5,7 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import FisaForm from "@/components/FisaForm";
-import { getFisa, saveFisa, deleteFisa } from "@/lib/db";
+import { getFisa, saveFisa, deleteFisa, upsertCatalogFromFisa } from "@/lib/db";
 import type { Fisa } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
@@ -40,6 +40,11 @@ function EditInner() {
     if (!fisa) return;
     const next = { ...fisa, reviewed: true };
     await saveFisa(next);
+    try {
+      await upsertCatalogFromFisa(next);
+    } catch {
+      /* catalog learn is best-effort */
+    }
     setFisa(next);
     setSaved(true);
   }

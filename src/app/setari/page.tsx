@@ -5,7 +5,15 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { Field, inputCls } from "@/components/Field";
-import { getSettings, saveSettings, getSession, listFise } from "@/lib/db";
+import {
+  getSettings,
+  saveSettings,
+  getSession,
+  listFise,
+  getCatalogClients,
+  getCatalogEquipment,
+  clearCatalogs,
+} from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
@@ -18,6 +26,10 @@ import {
   readFileAsText,
   restoreBackupReplaceAll,
 } from "@/lib/backup";
+import {
+  importCatalogFile,
+  exportCatalogDownload,
+} from "@/lib/catalog-import";
 
 export default function SetariPage() {
   const { t, locale, setLocale } = useI18n();
@@ -34,8 +46,25 @@ export default function SetariPage() {
   const [backupBusy, setBackupBusy] = useState<"export" | "import" | null>(
     null
   );
+  const [catalogCounts, setCatalogCounts] = useState({
+    clients: 0,
+    equipment: 0,
+  });
+  const [catalogBusy, setCatalogBusy] = useState<
+    "import" | "export" | "clear" | null
+  >(null);
+  const [catalogReplace, setCatalogReplace] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const backupRef = useRef<HTMLInputElement>(null);
+  const catalogRef = useRef<HTMLInputElement>(null);
+
+  async function refreshCatalogCounts() {
+    const [clients, equipment] = await Promise.all([
+      getCatalogClients(),
+      getCatalogEquipment(),
+    ]);
+    setCatalogCounts({ clients: clients.length, equipment: equipment.length });
+  }
 
   useEffect(() => {
     Promise.all([getSettings(), getSession()]).then(([settings, session]) => {
@@ -47,6 +76,7 @@ export default function SetariPage() {
         setS(settings);
       }
     });
+    refreshCatalogCounts();
   }, []);
 
   async function onSave() {
@@ -114,6 +144,7 @@ export default function SetariPage() {
       const { fiseCount } = await restoreBackupReplaceAll(parsed.data);
       const settings = await getSettings();
       setS(settings);
+      await refreshCatalogCounts();
       setMsg(t("settings.backupRestored", { count: fiseCount }));
       router.push("/fise");
     } catch {
@@ -121,6 +152,67 @@ export default function SetariPage() {
     } finally {
       setBackupBusy(null);
       if (backupRef.current) backupRef.current.value = "";
+    }
+  }
+
+  async function onImportCatalog(file: File | undefined) {
+    if (!file) return;
+    setCatalogBusy("import");
+    setMsg("");
+    try {
+      const mode = catalogReplace ? "replace" : "upsert";
+      if (mode === "replace") {
+        const ok = confirm(t("settings.catalogReplaceConfirm"));
+        if (!ok) return;
+      }
+      const r = await importCatalogFile(file, mode);
+      await refreshCatalogCounts();
+      setMsg(
+        t("settings.catalogImported", {
+          cAdd: r.clientsAdded,
+          cUpd: r.clientsUpdated,
+          eAdd: r.equipmentAdded,
+          eUpd: r.equipmentUpdated,
+        })
+      );
+    } catch {
+      setMsg(t("settings.catalogErr"));
+    } finally {
+      setCatalogBusy(null);
+      if (catalogRef.current) catalogRef.current.value = "";
+    }
+  }
+
+  async function onExportCatalog() {
+    setCatalogBusy("export");
+    setMsg("");
+    try {
+      const r = await exportCatalogDownload();
+      setMsg(
+        t("settings.catalogExported", {
+          clients: r.clients,
+          equipment: r.equipment,
+        })
+      );
+    } catch {
+      setMsg(t("settings.catalogErr"));
+    } finally {
+      setCatalogBusy(null);
+    }
+  }
+
+  async function onClearCatalogs() {
+    if (!confirm(t("settings.catalogClearConfirm"))) return;
+    setCatalogBusy("clear");
+    setMsg("");
+    try {
+      await clearCatalogs();
+      await refreshCatalogCounts();
+      setMsg(t("settings.catalogCleared"));
+    } catch {
+      setMsg(t("settings.catalogErr"));
+    } finally {
+      setCatalogBusy(null);
     }
   }
 
@@ -286,6 +378,77 @@ export default function SetariPage() {
       <BigButton onClick={onSave} className="mt-4">
         {t("settings.save")}
       </BigButton>
+
+      <div className="qf-card p-5 mt-6 mb-2">
+        <h2 className="text-sm font-semibold text-foreground mb-1">
+          {t("settings.catalog")}
+        </h2>
+        <p className="text-xs text-muted mb-3 leading-relaxed">
+          {t("settings.catalogTip")}
+        </p>
+        <p className="text-sm text-foreground mb-4">
+          {t("settings.catalogCounts", {
+            clients: catalogCounts.clients,
+            equipment: catalogCounts.equipment,
+          })}
+        </p>
+        <input
+          ref={catalogRef}
+          type="file"
+          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+          className="hidden"
+          onChange={(e) => onImportCatalog(e.target.files?.[0])}
+        />
+        <label className="flex items-center gap-2 mb-3 min-h-[44px] text-sm text-foreground">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-border"
+            checked={catalogReplace}
+            onChange={(e) => setCatalogReplace(e.target.checked)}
+          />
+          {t("settings.catalogReplace")}
+        </label>
+        <div className="space-y-3">
+          <BigButton
+            variant="secondary"
+            onClick={() => catalogRef.current?.click()}
+            disabled={catalogBusy !== null}
+          >
+            {catalogBusy === "import"
+              ? t("settings.catalogImporting")
+              : t("settings.catalogImport")}
+          </BigButton>
+          <BigButton
+            variant="secondary"
+            onClick={() => {
+              const a = document.createElement("a");
+              a.href = "/templates/querra-catalog-template.xlsx";
+              a.download = "querra-catalog-template.xlsx";
+              a.click();
+            }}
+          >
+            {t("settings.catalogTemplate")}
+          </BigButton>
+          <BigButton
+            variant="secondary"
+            onClick={onExportCatalog}
+            disabled={catalogBusy !== null}
+          >
+            {catalogBusy === "export"
+              ? t("settings.catalogExporting")
+              : t("settings.catalogExport")}
+          </BigButton>
+          <BigButton
+            variant="danger"
+            onClick={onClearCatalogs}
+            disabled={catalogBusy !== null}
+          >
+            {catalogBusy === "clear"
+              ? t("settings.catalogClearing")
+              : t("settings.catalogClear")}
+          </BigButton>
+        </div>
+      </div>
 
       <div className="qf-card p-5 mt-6 mb-2">
         <h2 className="text-sm font-semibold text-foreground mb-1">
