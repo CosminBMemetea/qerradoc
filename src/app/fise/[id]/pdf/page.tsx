@@ -13,11 +13,12 @@ import {
   pdfShareText,
 } from "@/lib/pdf";
 import type { Fisa, FirmSettings } from "@/lib/types";
+import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
 export default function PdfPage() {
   const params = useParams();
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const id = String(params.id);
   const [fisa, setFisa] = useState<Fisa | null>(null);
   const [settings, setSettings] = useState<FirmSettings | null>(null);
@@ -31,9 +32,13 @@ export default function PdfPage() {
     });
   }, [id]);
 
+  const contentLocale = resolveContentLocale(fisa);
+  const contentLocaleLabel =
+    contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
+
   async function makeBlob() {
     if (!fisa || !settings) throw new Error("missing");
-    return generateFisaPdf(fisa, settings, locale);
+    return generateFisaPdf(fisa, settings, contentLocale);
   }
 
   async function onDownload() {
@@ -41,7 +46,7 @@ export default function PdfPage() {
     setMsg("");
     try {
       const blob = await makeBlob();
-      const name = `${pdfFilePrefix(locale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
+      const name = `${pdfFilePrefix(contentLocale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
       downloadBlob(blob, name);
       setMsg(t("pdf.downloaded"));
     } catch {
@@ -56,8 +61,8 @@ export default function PdfPage() {
     setMsg("");
     try {
       const blob = await makeBlob();
-      const name = `${pdfFilePrefix(locale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
-      const shared = await sharePdf(blob, name, pdfShareText(locale));
+      const name = `${pdfFilePrefix(contentLocale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
+      const shared = await sharePdf(blob, name, pdfShareText(contentLocale));
       setMsg(shared ? t("pdf.shared") : t("pdf.downloadedFallback"));
     } catch {
       setMsg(t("pdf.errShare"));
@@ -82,9 +87,17 @@ export default function PdfPage() {
         </div>
       )}
       <div className="qf-card p-5 mb-5">
-        <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500 mb-1">
-          {t("pdf.summary")}
-        </p>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <p className="text-[11px] font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500">
+            {t("pdf.summary")}
+          </p>
+          <span
+            className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border border-stone-200/80 dark:border-stone-700"
+            title={t("form.contentLocaleHint")}
+          >
+            {t("form.documentLang")}: {contentLocaleLabel}
+          </span>
+        </div>
         <h2 className="text-lg font-semibold text-foreground">
           {settings.companyName}
         </h2>

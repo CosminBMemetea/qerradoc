@@ -8,6 +8,7 @@ import { listFise, getSession } from "@/lib/db";
 import { seedDemoFisa } from "@/lib/seed";
 import { loadDemo } from "@/lib/demos";
 import type { Fisa, TemplateKind } from "@/lib/types";
+import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { techExample } from "@/lib/defaults";
 
@@ -136,11 +137,16 @@ export default function FiseListPage() {
                     <div className="text-xs text-stone-400 dark:text-stone-500 truncate mt-0.5">
                       {f.modelUtilaj || "—"} · {f.serie || t("fise.noSerie")}
                     </div>
-                    {f.templateKind && (
-                      <span className="inline-block mt-1.5 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60">
-                        {t(`fise.badge.${f.templateKind}`)}
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {f.templateKind && (
+                        <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60">
+                          {t(`fise.badge.${f.templateKind}`)}
+                        </span>
+                      )}
+                      <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border border-stone-200/80 dark:border-stone-700">
+                        {resolveContentLocale(f).toUpperCase()}
                       </span>
-                    )}
+                    </div>
                   </div>
                   <div className="text-xs text-stone-400 dark:text-stone-500 whitespace-nowrap pt-0.5">
                     {f.dataInterventiei || f.updatedAt.slice(0, 10)}

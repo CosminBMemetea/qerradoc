@@ -2,7 +2,16 @@
 
 import { get, set, del, keys } from "idb-keyval";
 import type { Fisa, FirmSettings, LicenseState, Session } from "./types";
+import { resolveContentLocale } from "./types";
 import { firmExample } from "./defaults";
+
+/** Soft-migrate legacy rows missing contentLocale (default RO; do not wipe data). */
+function withContentLocale(f: Fisa): Fisa {
+  if (f.contentLocale === "en" || f.contentLocale === "pl" || f.contentLocale === "ro") {
+    return f;
+  }
+  return { ...f, contentLocale: resolveContentLocale(f) };
+}
 
 const FISA_PREFIX = "fisa:";
 const SETTINGS_KEY = "firm-settings";
@@ -15,7 +24,8 @@ export async function saveFisa(fisa: Fisa): Promise<void> {
 }
 
 export async function getFisa(id: string): Promise<Fisa | undefined> {
-  return get(FISA_PREFIX + id);
+  const f = await get<Fisa>(FISA_PREFIX + id);
+  return f ? withContentLocale(f) : undefined;
 }
 
 export async function deleteFisa(id: string): Promise<void> {
@@ -30,6 +40,7 @@ export async function listFise(): Promise<Fisa[]> {
   const items = await Promise.all(fisaKeys.map((k) => get<Fisa>(k)));
   return items
     .filter((f): f is Fisa => !!f)
+    .map(withContentLocale)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 

@@ -50,7 +50,7 @@ async function main() {
       const blob = await generateFisaPdf(
         fisa,
         { ...base, logoDataUrl },
-        loc
+        fisa.contentLocale || loc
       );
       const buf = Buffer.from(await blob.arrayBuffer());
       const out = join(process.cwd(), "tmp", `sample-${loc}-logo-${tag}.pdf`);
@@ -59,7 +59,7 @@ async function main() {
     }
 
     // Keep legacy no-logo samples too
-    const blob = await generateFisaPdf(fisa, base, loc);
+    const blob = await generateFisaPdf(fisa, base, fisa.contentLocale || loc);
     const buf = Buffer.from(await blob.arrayBuffer());
     const out = join(process.cwd(), "tmp", `sample-${loc}-fisa.pdf`);
     writeFileSync(out, buf);

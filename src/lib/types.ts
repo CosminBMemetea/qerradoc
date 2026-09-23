@@ -2,6 +2,18 @@ export type TipFisa = "Constatare" | "Reparație" | "Revizie" | "Punere în func
 
 export type TemplateKind = "curatenie" | "tamplarie" | "stoma";
 
+/** Language of the sheet content / PDF labels / currency (locked at creation). */
+export type ContentLocale = "ro" | "en" | "pl";
+
+/** Fallback when a stored fișă has no contentLocale (legacy rows → RO). */
+export function resolveContentLocale(
+  fisa: { contentLocale?: string | null } | null | undefined
+): ContentLocale {
+  const loc = fisa?.contentLocale;
+  if (loc === "en" || loc === "pl" || loc === "ro") return loc;
+  return "ro";
+}
+
 export interface Piesa {
   nr: number;
   denumire: string;
@@ -36,6 +48,12 @@ export interface Fisa {
   audioNoteDataUrl?: string;
   /** Demo / industry template badge on list */
   templateKind?: TemplateKind;
+  /**
+   * Content language for this sheet (PDF labels, filename, share text, currency).
+   * Locked at creation from UI locale; independent of later UI language switches.
+   * Missing on legacy rows → treat as "ro" via resolveContentLocale().
+   */
+  contentLocale?: ContentLocale;
   createdAt: string;
   updatedAt: string;
   reviewed: boolean;
@@ -97,6 +115,7 @@ export function emptyFisa(partial?: Partial<Fisa>): Fisa {
     createdAt: now,
     updatedAt: now,
     reviewed: false,
+    contentLocale: "ro",
     ...partial,
   };
 }

@@ -37,6 +37,8 @@ function TextInner() {
       const session = await getSession();
       const parsed = parse ? parseWhatsAppText(text) : { reclamatie: text };
       const year = new Date().getFullYear();
+      const contentLocale =
+        locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
       const fisa = emptyFisa({
         ...parsed,
         nrFisa: parsed.nrFisa || `${year}-${String(Date.now()).slice(-4)}`,
@@ -44,6 +46,7 @@ function TextInner() {
           parsed.semnaturaTehnician || session?.technicianName || "",
         reviewed: false,
         audioNoteDataUrl,
+        contentLocale,
       });
       await saveFisa(fisa);
       router.push(`/fise/${fisa.id}?review=1`);

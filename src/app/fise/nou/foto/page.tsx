@@ -64,12 +64,15 @@ export default function NewFromPhotoPage() {
       if (mode === "model" || mode === "ocr") {
         partial = demoFillFromPhoto(filename, locale);
       }
+      const contentLocale =
+        locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
       const fisa = emptyFisa({
         ...partial,
         photoDataUrl: preview || undefined,
         nrFisa: `${year}-${String(Date.now()).slice(-4)}`,
         semnaturaTehnician: session?.technicianName || "",
         reviewed: false,
+        contentLocale,
         observatii:
           mode === "ocr"
             ? t("photo.obsOcr")

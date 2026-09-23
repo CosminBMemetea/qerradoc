@@ -1,8 +1,8 @@
 "use client";
 
-import type { Fisa, TipFisa } from "@/lib/types";
-import { TIPURI } from "@/lib/types";
-import { useI18n } from "@/lib/i18n";
+import type { ContentLocale, Fisa, TipFisa } from "@/lib/types";
+import { TIPURI, resolveContentLocale } from "@/lib/types";
+import { useI18n, LOCALE_LABELS } from "@/lib/i18n";
 import { currencySymbol } from "@/lib/currency";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
@@ -14,9 +14,18 @@ export default function FisaForm({
   fisa: Fisa;
   onChange: (f: Fisa) => void;
 }) {
-  const { t, dateLang, locale } = useI18n();
+  const { t, dateLang } = useI18n();
+  const contentLocale = resolveContentLocale(fisa);
+  const contentLocaleLabel =
+    contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
   const set = <K extends keyof Fisa>(key: K, value: Fisa[K]) =>
     onChange({ ...fisa, [key]: value });
+
+  const onContentLocaleChange = (next: ContentLocale) => {
+    if (next === contentLocale) return;
+    if (!confirm(t("form.contentLocaleWarn"))) return;
+    set("contentLocale", next);
+  };
 
   const setPiesa = (
     idx: number,
@@ -39,6 +48,39 @@ export default function FisaForm({
       <div className="qf-card p-3.5 mb-4 text-sm text-amber-950 dark:text-amber-100 bg-amber-50/90 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60">
         {t("form.reviewBanner")}
       </div>
+
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border border-stone-200/80 dark:border-stone-700">
+          {t("form.documentLang")}: {contentLocaleLabel}
+        </span>
+      </div>
+
+      <details className="mb-4 rounded-xl border border-border bg-card open:shadow-sm">
+        <summary className="cursor-pointer select-none px-3.5 py-2.5 text-xs font-medium text-muted list-none [&::-webkit-details-marker]:hidden">
+          {t("form.contentLocaleChange")}
+        </summary>
+        <div className="px-3.5 pb-3.5 pt-1 space-y-2">
+          <p className="text-xs text-muted leading-relaxed">
+            {t("form.contentLocaleHint")}
+          </p>
+          <label className="block text-xs font-medium text-foreground">
+            {t("form.contentLocale")}
+            <select
+              className={`${inputCls} mt-1`}
+              value={contentLocale}
+              onChange={(e) =>
+                onContentLocaleChange(e.target.value as ContentLocale)
+              }
+            >
+              {(["ro", "en", "pl"] as ContentLocale[]).map((l) => (
+                <option key={l} value={l}>
+                  {l.toUpperCase()} — {LOCALE_LABELS[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </details>
 
       <Field label={t("form.tip")} hint={t("hint.tip")}>
         <div className="grid grid-cols-2 gap-2">
@@ -232,7 +274,7 @@ export default function FisaForm({
                 />
                 <input
                   className={inputCls}
-                  placeholder={t("form.pret", { currency: currencySymbol(locale) })}
+                  placeholder={t("form.pret", { currency: currencySymbol(contentLocale) })}
                   inputMode="decimal"
                   value={p.pretEur}
                   onChange={(e) => setPiesa(idx, "pretEur", e.target.value)}

@@ -225,7 +225,8 @@ function boxedText(
 
 /**
  * Generate A4 service sheet PDF.
- * Callers must pass locale from useI18n() (UI locale; fișă has no stored content language).
+ * Callers must pass fisa.contentLocale (via resolveContentLocale), not the UI locale —
+ * language choice locks the sheet; a RO sheet stays RO on PDF even if UI is PL/EN.
  * Embeds Noto Sans so RO/PL diacritics render without ASCII folding.
  */
 export async function generateFisaPdf(

@@ -143,6 +143,13 @@ const ro: Dict = {
   "form.semnaturaClient": "Semnătură client (nume)",
   "form.semnaturaClientPh": "Numele persoanei care recepționează",
   "form.semnaturaTehnician": "Semnătură tehnician (nume)",
+  "form.documentLang": "Document",
+  "form.contentLocale": "Limba documentului",
+  "form.contentLocaleChange": "Schimbă limba documentului…",
+  "form.contentLocaleHint":
+    "Etichetele PDF, moneda și prefixul fișierului urmează limba acestei fișe, nu limba din Setări.",
+  "form.contentLocaleWarn":
+    "Schimbi limba documentului? PDF-ul, etichetele și moneda (lei / € / zł) vor urma noua limbă.",
   "tip.Constatare": "Constatare",
   "tip.Reparație": "Reparație",
   "tip.Revizie": "Revizie",
@@ -394,6 +401,13 @@ const en: Dict = {
   "form.semnaturaClient": "Client signature (name)",
   "form.semnaturaClientPh": "Name of person receiving the work",
   "form.semnaturaTehnician": "Technician signature (name)",
+  "form.documentLang": "Document",
+  "form.contentLocale": "Document language",
+  "form.contentLocaleChange": "Change document language…",
+  "form.contentLocaleHint":
+    "PDF labels, currency and file prefix follow this sheet’s language, not the Settings UI language.",
+  "form.contentLocaleWarn":
+    "Change document language? PDF labels and currency (lei / € / zł) will follow the new language.",
   "tip.Constatare": "Inspection",
   "tip.Reparație": "Repair",
   "tip.Revizie": "Service",
@@ -646,6 +660,13 @@ const pl: Dict = {
   "form.semnaturaClient": "Podpis klienta (imię)",
   "form.semnaturaClientPh": "Imię osoby odbierającej",
   "form.semnaturaTehnician": "Podpis technika (imię)",
+  "form.documentLang": "Dokument",
+  "form.contentLocale": "Język dokumentu",
+  "form.contentLocaleChange": "Zmień język dokumentu…",
+  "form.contentLocaleHint":
+    "Etykiety PDF, waluta i prefiks pliku zależą od języka tej karty, nie od języka w Ustawieniach.",
+  "form.contentLocaleWarn":
+    "Zmienić język dokumentu? Etykiety PDF i waluta (lei / € / zł) będą zgodne z nowym językiem.",
   "tip.Constatare": "Ekspertyza",
   "tip.Reparație": "Naprawa",
   "tip.Revizie": "Przegląd",

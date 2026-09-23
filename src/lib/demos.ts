@@ -407,7 +407,8 @@ export function buildDemo(
 ): Fisa {
   const byLocale = BUILDERS[kind];
   const builder = byLocale[locale] || byLocale.ro;
-  return builder(technicianName);
+  const fisa = builder(technicianName);
+  return { ...fisa, contentLocale: locale };
 }
 
 /** Persist a locale-aware demo. Prefer this from the list page. */
