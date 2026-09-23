@@ -5,11 +5,15 @@ export type TemplateKind = "curatenie" | "tamplarie" | "stoma";
 /** Language of the sheet content / PDF labels / currency (locked at creation). */
 export type ContentLocale = "ro" | "en" | "pl";
 
-/** Fallback when a stored fișă has no contentLocale (legacy rows → RO). */
+/** Fallback when a stored fișă has no contentLocale (legacy rows → RO).
+ *  Normalizes casing / region tags: pl, PL, pl-PL → pl.
+ */
 export function resolveContentLocale(
   fisa: { contentLocale?: string | null } | null | undefined
 ): ContentLocale {
-  const loc = fisa?.contentLocale;
+  const raw = fisa?.contentLocale;
+  if (raw == null || raw === "") return "ro";
+  const loc = String(raw).toLowerCase().slice(0, 2);
   if (loc === "en" || loc === "pl" || loc === "ro") return loc;
   return "ro";
 }

@@ -5,12 +5,11 @@ import type { Fisa, FirmSettings, LicenseState, Session } from "./types";
 import { resolveContentLocale } from "./types";
 import { firmExample } from "./defaults";
 
-/** Soft-migrate legacy rows missing contentLocale (default RO; do not wipe data). */
+/** Soft-migrate / normalize contentLocale (legacy missing → RO; PL/pl-PL → pl). */
 function withContentLocale(f: Fisa): Fisa {
-  if (f.contentLocale === "en" || f.contentLocale === "pl" || f.contentLocale === "ro") {
-    return f;
-  }
-  return { ...f, contentLocale: resolveContentLocale(f) };
+  const resolved = resolveContentLocale(f);
+  if (f.contentLocale === resolved) return f;
+  return { ...f, contentLocale: resolved };
 }
 
 const FISA_PREFIX = "fisa:";
@@ -19,7 +18,11 @@ const LICENSE_KEY = "license";
 const SESSION_KEY = "session";
 
 export async function saveFisa(fisa: Fisa): Promise<void> {
-  const updated = { ...fisa, updatedAt: new Date().toISOString() };
+  const updated = {
+    ...fisa,
+    contentLocale: resolveContentLocale(fisa),
+    updatedAt: new Date().toISOString(),
+  };
   await set(FISA_PREFIX + fisa.id, updated);
 }
 

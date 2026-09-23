@@ -12,7 +12,7 @@ import {
   pdfFilePrefix,
   pdfShareText,
 } from "@/lib/pdf";
-import type { Fisa, FirmSettings } from "@/lib/types";
+import type { ContentLocale, Fisa, FirmSettings } from "@/lib/types";
 import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
@@ -24,29 +24,64 @@ export default function PdfPage() {
   const [settings, setSettings] = useState<FirmSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     Promise.all([getFisa(id), getSettings()]).then(([f, s]) => {
-      setFisa(f || null);
+      if (cancelled) return;
+      if (!f) {
+        setNotFound(true);
+        setFisa(null);
+        setSettings(s);
+        return;
+      }
+      setNotFound(false);
+      setFisa(f);
       setSettings(s);
     });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
+
+  /** Always re-read IndexedDB so PDF / badge use locked contentLocale, never UI locale. */
+  async function loadFreshFromIdb(): Promise<{
+    fisa: Fisa;
+    settings: FirmSettings;
+    contentLocale: ContentLocale;
+  }> {
+    const [f, s] = await Promise.all([getFisa(id), getSettings()]);
+    if (!f) {
+      setNotFound(true);
+      setFisa(null);
+      throw new Error("fisa not found");
+    }
+    setNotFound(false);
+    setFisa(f);
+    setSettings(s);
+    return {
+      fisa: f,
+      settings: s,
+      contentLocale: resolveContentLocale(f),
+    };
+  }
 
   const contentLocale = resolveContentLocale(fisa);
   const contentLocaleLabel =
     contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
 
-  async function makeBlob() {
-    if (!fisa || !settings) throw new Error("missing");
-    return generateFisaPdf(fisa, settings, contentLocale);
-  }
-
   async function onDownload() {
     setBusy(true);
     setMsg("");
     try {
-      const blob = await makeBlob();
-      const name = `${pdfFilePrefix(contentLocale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
+      const fresh = await loadFreshFromIdb();
+      const blob = await generateFisaPdf(
+        fresh.fisa,
+        fresh.settings,
+        fresh.contentLocale
+      );
+      const name = `${pdfFilePrefix(fresh.contentLocale)}_${fresh.fisa.nrFisa || fresh.fisa.id.slice(0, 8)}.pdf`;
       downloadBlob(blob, name);
       setMsg(t("pdf.downloaded"));
     } catch {
@@ -60,15 +95,34 @@ export default function PdfPage() {
     setBusy(true);
     setMsg("");
     try {
-      const blob = await makeBlob();
-      const name = `${pdfFilePrefix(contentLocale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
-      const shared = await sharePdf(blob, name, pdfShareText(contentLocale));
+      const fresh = await loadFreshFromIdb();
+      const blob = await generateFisaPdf(
+        fresh.fisa,
+        fresh.settings,
+        fresh.contentLocale
+      );
+      const name = `${pdfFilePrefix(fresh.contentLocale)}_${fresh.fisa.nrFisa || fresh.fisa.id.slice(0, 8)}.pdf`;
+      const shared = await sharePdf(
+        blob,
+        name,
+        pdfShareText(fresh.contentLocale)
+      );
       setMsg(shared ? t("pdf.shared") : t("pdf.downloadedFallback"));
     } catch {
       setMsg(t("pdf.errShare"));
     } finally {
       setBusy(false);
     }
+  }
+
+  if (notFound) {
+    return (
+      <AppShell title="PDF" backHref="/fise">
+        <p className="text-center py-10 text-red-600 dark:text-red-400">
+          {t("edit.notFound")}
+        </p>
+      </AppShell>
+    );
   }
 
   if (!fisa || !settings) {

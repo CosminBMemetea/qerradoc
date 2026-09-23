@@ -21,14 +21,20 @@ function EditInner() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     getFisa(id).then((f) => {
+      if (cancelled) return;
       if (!f) {
-        setErr(t("edit.notFound"));
+        // Stable sentinel — translate at render so UI language switch does not re-fetch.
+        setErr("NOT_FOUND");
         return;
       }
       setFisa(f);
     });
-  }, [id, t]);
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   async function onSave() {
     if (!fisa) return;
@@ -47,7 +53,9 @@ function EditInner() {
   if (err) {
     return (
       <AppShell title={t("edit.errorTitle")} backHref="/fise">
-        <p className="text-red-600 dark:text-red-400">{err}</p>
+        <p className="text-red-600 dark:text-red-400">
+          {err === "NOT_FOUND" ? t("edit.notFound") : err}
+        </p>
       </AppShell>
     );
   }

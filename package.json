@@ -9,7 +9,8 @@
     "lint": "next lint",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "start:lan": "next start -H 0.0.0.0 -p 3000",
-    "preview:pdf": "npx --yes tsx scripts/preview-pdf.ts"
+    "preview:pdf": "npx --yes tsx scripts/preview-pdf.ts",
+    "smoke:locale": "node scripts/smoke-content-locale.mjs && npx --yes tsx scripts/smoke-content-locale.ts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
