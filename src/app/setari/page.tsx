@@ -8,7 +8,7 @@ import { getSettings, saveSettings } from "@/lib/db";
 import type { FirmSettings } from "@/lib/types";
 import { useI18n, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useTheme, type Theme } from "@/lib/theme";
-import { firmExample } from "@/lib/defaults";
+import { firmExample, cuiExample } from "@/lib/defaults";
 
 export default function SetariPage() {
   const { t, locale, setLocale } = useI18n();
@@ -112,7 +112,7 @@ export default function SetariPage() {
             className={inputCls}
             value={s.cui}
             onChange={(e) => setS({ ...s, cui: e.target.value })}
-            placeholder="RO12345678"
+            placeholder={cuiExample(locale)}
           />
         </Field>
         <Field label={t("settings.address")}>

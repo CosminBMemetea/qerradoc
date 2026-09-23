@@ -40,7 +40,7 @@ async function compressImage(dataUrl: string, maxW = 1280): Promise<string> {
 
 export default function NewFromPhotoPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [filename, setFilename] = useState("");
@@ -62,7 +62,7 @@ export default function NewFromPhotoPage() {
       const year = new Date().getFullYear();
       let partial = {};
       if (mode === "model" || mode === "ocr") {
-        partial = demoFillFromPhoto(filename);
+        partial = demoFillFromPhoto(filename, locale);
       }
       const fisa = emptyFisa({
         ...partial,

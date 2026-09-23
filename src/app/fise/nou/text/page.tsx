@@ -7,14 +7,14 @@ import BigButton from "@/components/BigButton";
 import DictateButton from "@/components/DictateButton";
 import { Field, textareaCls } from "@/components/Field";
 import { emptyFisa } from "@/lib/types";
-import { parseWhatsAppText, SAMPLE_WHATSAPP } from "@/lib/parse-text";
+import { parseWhatsAppText, sampleWhatsApp } from "@/lib/parse-text";
 import { saveFisa, getSession } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 
 function TextInner() {
   const router = useRouter();
   const search = useSearchParams();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const autoDictate = search.get("dictate") === "1";
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -89,7 +89,7 @@ function TextInner() {
         </BigButton>
         <BigButton
           variant="secondary"
-          onClick={() => setText(SAMPLE_WHATSAPP)}
+          onClick={() => setText(sampleWhatsApp(locale))}
         >
           {t("text.sample")}
         </BigButton>

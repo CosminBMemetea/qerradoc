@@ -5,7 +5,13 @@ import { useParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { getFisa, getSettings } from "@/lib/db";
-import { generateFisaPdf, downloadBlob, sharePdf } from "@/lib/pdf";
+import {
+  generateFisaPdf,
+  downloadBlob,
+  sharePdf,
+  pdfFilePrefix,
+  pdfShareText,
+} from "@/lib/pdf";
 import type { Fisa, FirmSettings } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,7 +41,7 @@ export default function PdfPage() {
     setMsg("");
     try {
       const blob = await makeBlob();
-      const name = `Fisa_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
+      const name = `${pdfFilePrefix(locale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
       downloadBlob(blob, name);
       setMsg(t("pdf.downloaded"));
     } catch {
@@ -50,8 +56,8 @@ export default function PdfPage() {
     setMsg("");
     try {
       const blob = await makeBlob();
-      const name = `Fisa_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
-      const shared = await sharePdf(blob, name);
+      const name = `${pdfFilePrefix(locale)}_${fisa!.nrFisa || fisa!.id.slice(0, 8)}.pdf`;
+      const shared = await sharePdf(blob, name, pdfShareText(locale));
       setMsg(shared ? t("pdf.shared") : t("pdf.downloadedFallback"));
     } catch {
       setMsg(t("pdf.errShare"));

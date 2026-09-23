@@ -3,6 +3,7 @@
 import { jsPDF } from "jspdf";
 import type { Fisa, FirmSettings, TipFisa } from "./types";
 import { firmExample } from "./defaults";
+import { embedUnicodeFont, pdfFont } from "./pdf-font";
 
 export type PdfLocale = "ro" | "en" | "pl";
 
@@ -175,38 +176,6 @@ function tipIndex(tip: TipFisa): number {
   }
 }
 
-/** Helvetica lacks RO/PL glyphs — ASCII-safe for PDF chrome + body. */
-function pdfSafe(s: string): string {
-  return (s || "")
-    .replace(/ă|â|á|à|ä/g, "a")
-    .replace(/Ă|Â|Á|À|Ä/g, "A")
-    .replace(/î|í|ì|ï/g, "i")
-    .replace(/Î|Í|Ì|Ï/g, "I")
-    .replace(/ș|ş|š/g, "s")
-    .replace(/Ș|Ş|Š/g, "S")
-    .replace(/ț|ţ|ť/g, "t")
-    .replace(/Ț|Ţ|Ť/g, "T")
-    .replace(/ę/g, "e")
-    .replace(/Ę/g, "E")
-    .replace(/ó|ô|ö/g, "o")
-    .replace(/Ó|Ô|Ö/g, "O")
-    .replace(/ú|ù|ü/g, "u")
-    .replace(/Ú|Ù|Ü/g, "U")
-    .replace(/ć|č/g, "c")
-    .replace(/Ć|Č/g, "C")
-    .replace(/ń|ň/g, "n")
-    .replace(/Ń|Ň/g, "N")
-    .replace(/ź|ż|ž/g, "z")
-    .replace(/Ź|Ż|Ž/g, "Z")
-    .replace(/ł/g, "l")
-    .replace(/Ł/g, "L")
-    .replace(/ą/g, "a")
-    .replace(/Ą/g, "A")
-    .replace(/ś/g, "s")
-    .replace(/Ś/g, "S")
-    .replace(/€/g, "EUR")
-    .replace(/£/g, "GBP");
-}
 
 function resolveLocale(locale?: string): PdfLocale {
   if (locale === "en" || locale === "pl" || locale === "ro") return locale;
@@ -224,10 +193,10 @@ function drawCheckbox(
   doc.setLineWidth(0.25);
   doc.rect(x, y - size + 0.6, size, size);
   if (checked) {
-    doc.setFont("helvetica", "bold");
+    doc.setFont(pdfFont(), "bold");
     doc.setFontSize(7);
     doc.text("X", x + 0.7, y);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(pdfFont(), "normal");
   }
 }
 
@@ -245,16 +214,17 @@ function boxedText(
   doc.setDrawColor(30);
   doc.setLineWidth(0.3);
   doc.rect(x, y, w, h);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pdfFont(), "normal");
   doc.setFontSize(fontSize);
-  const lines = doc.splitTextToSize(pdfSafe(text || " "), w - pad * 2);
+  const lines = doc.splitTextToSize((text || " "), w - pad * 2);
   const maxLines = Math.max(1, Math.floor((h - pad * 2) / (fontSize * 0.4)));
   doc.text(lines.slice(0, maxLines), x + pad, y + pad + fontSize * 0.35);
 }
 
 /**
  * Generate A4 service sheet PDF.
- * Callers must pass locale from useI18n().
+ * Callers must pass locale from useI18n() (UI locale; fișă has no stored content language).
+ * Embeds Noto Sans so RO/PL diacritics render without ASCII folding.
  */
 export async function generateFisaPdf(
   fisa: Fisa,
@@ -264,6 +234,7 @@ export async function generateFisaPdf(
   const loc = resolveLocale(locale);
   const L = LABELS[loc];
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  await embedUnicodeFont(doc);
   const pageW = 210;
   const pageH = 297;
   const margin = 8;
@@ -296,22 +267,28 @@ export async function generateFisaPdf(
     }
   }
 
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(10);
   doc.setTextColor(20);
-  doc.text(pdfSafe(company), pageW / 2, headerTop + 6, { align: "center" });
+  doc.text((company), pageW / 2, headerTop + 6, { align: "center" });
 
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pdfFont(), "normal");
   doc.setFontSize(7);
   const subBits: string[] = [];
   if (L.docIdentity) subBits.push(L.docIdentity);
   if (settings.cui) {
-    subBits.push(loc === "en" ? `Reg: ${settings.cui}` : `CUI: ${settings.cui}`);
+    subBits.push(
+      loc === "en"
+        ? `Reg: ${settings.cui}`
+        : loc === "pl"
+          ? `NIP: ${settings.cui}`
+          : `CUI: ${settings.cui}`
+    );
   }
   if (settings.address) subBits.push(settings.address);
   if (settings.phone) subBits.push(settings.phone);
   if (subBits.length) {
-    doc.text(pdfSafe(subBits.join("  ·  ")), pageW / 2, headerTop + 11.5, {
+    doc.text((subBits.join("  ·  ")), pageW / 2, headerTop + 11.5, {
       align: "center",
       maxWidth: contentW - 40,
     });
@@ -330,9 +307,9 @@ export async function generateFisaPdf(
   L.tipBoxes.forEach((label, i) => {
     const ty = metaTop + i * tipH;
     drawCheckbox(doc, margin, ty + 2.5, tipChecked === i);
-    doc.setFont("helvetica", tipChecked === i ? "bold" : "normal");
+    doc.setFont(pdfFont(), tipChecked === i ? "bold" : "normal");
     doc.setFontSize(7.2);
-    doc.text(pdfSafe(label), margin + 5, ty + 2.5);
+    doc.text((label), margin + 5, ty + 2.5);
   });
 
   const metaRows: Array<{ label: string; value: string; extra?: string }> = [
@@ -356,19 +333,19 @@ export async function generateFisaPdf(
     doc.setLineWidth(0.25);
     const rowH = 5.2;
     doc.rect(rightX, my, rightW, rowH);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(pdfFont(), "bold");
     doc.setFontSize(6.5);
-    doc.text(pdfSafe(row.label) + ":", rightX + 1.2, my + 3.5);
-    const labelW = doc.getTextWidth(pdfSafe(row.label) + ":") + 2;
-    doc.setFont("helvetica", "normal");
+    doc.text((row.label) + ":", rightX + 1.2, my + 3.5);
+    const labelW = doc.getTextWidth((row.label) + ":") + 2;
+    doc.setFont(pdfFont(), "normal");
     doc.setFontSize(7);
     const valMax = rightW - labelW - (row.extra ? 42 : 3);
-    const valLines = doc.splitTextToSize(pdfSafe(row.value), Math.max(20, valMax));
+    const valLines = doc.splitTextToSize((row.value), Math.max(20, valMax));
     doc.text(valLines[0] || "", rightX + labelW, my + 3.5);
     if (row.extra) {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(pdfFont(), "bold");
       doc.setFontSize(6);
-      doc.text(pdfSafe(row.extra), rightX + rightW - 1.5, my + 3.5, {
+      doc.text((row.extra), rightX + rightW - 1.5, my + 3.5, {
         align: "right",
       });
     }
@@ -382,32 +359,32 @@ export async function generateFisaPdf(
   doc.setLineWidth(0.3);
   const bandH = 7;
   doc.rect(margin, y, contentW, bandH);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(8);
   doc.text(
-    `${pdfSafe(L.manopera)}:  ${pdfSafe(fisa.manoperaOre || "—")}`,
+    `${(L.manopera)}:  ${(fisa.manoperaOre || "—")}`,
     margin + 2,
     y + 4.5
   );
   const depX = margin + contentW * 0.42;
   doc.text(
-    `${pdfSafe(L.deplasare)}:  ${pdfSafe(fisa.deplasareKm || "—")}`,
+    `${(L.deplasare)}:  ${(fisa.deplasareKm || "—")}`,
     depX,
     y + 4.5
   );
   const yesX = margin + contentW - 38;
   drawCheckbox(doc, yesX, y + 4.5, fisa.deplasareDaNu === "DA");
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pdfFont(), "normal");
   doc.setFontSize(7.5);
-  doc.text(pdfSafe(L.yes), yesX + 4.5, y + 4.5);
+  doc.text((L.yes), yesX + 4.5, y + 4.5);
   drawCheckbox(doc, yesX + 16, y + 4.5, fisa.deplasareDaNu === "NU");
-  doc.text(pdfSafe(L.no), yesX + 20.5, y + 4.5);
+  doc.text((L.no), yesX + 20.5, y + 4.5);
   y += bandH + 2.5;
 
   // —— Reclamatie boxed ——
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(7.5);
-  doc.text(pdfSafe(L.reclamatie) + ":", margin, y);
+  doc.text((L.reclamatie) + ":", margin, y);
   y += 1.5;
   const recH = 18;
   boxedText(doc, fisa.reclamatie || "", margin, y, contentW, recH, {
@@ -418,9 +395,9 @@ export async function generateFisaPdf(
   // Optional photo (compact)
   if (fisa.photoDataUrl) {
     try {
-      doc.setFont("helvetica", "bold");
+      doc.setFont(pdfFont(), "bold");
       doc.setFontSize(7);
-      doc.text(pdfSafe(L.foto) + ":", margin, y + 3);
+      doc.text((L.foto) + ":", margin, y + 3);
       doc.addImage(fisa.photoDataUrl, "JPEG", margin + 28, y, 28, 20);
       y += 22;
     } catch {
@@ -429,9 +406,9 @@ export async function generateFisaPdf(
   }
 
   // —— Piese table (15 rows like Excel) ——
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(8);
-  doc.text(pdfSafe(L.pieseTitle) + ":", margin, y + 3);
+  doc.text((L.pieseTitle) + ":", margin, y + 3);
   y += 4.5;
 
   const colW = [8, 88, 28, 16, contentW - 8 - 88 - 28 - 16];
@@ -448,10 +425,10 @@ export async function generateFisaPdf(
   doc.setDrawColor(30);
   doc.setLineWidth(0.25);
   doc.rect(margin, y, contentW, headH, "FD");
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(6.2);
   headers.forEach((h, i) => {
-    doc.text(pdfSafe(h), colX[i] + 0.8, y + 4);
+    doc.text((h), colX[i] + 0.8, y + 4);
   });
   y += headH;
 
@@ -476,17 +453,17 @@ export async function generateFisaPdf(
     for (let c = 1; c < colX.length; c++) {
       doc.line(colX[c], y, colX[c], y + rowH);
     }
-    doc.setFont("helvetica", "normal");
+    doc.setFont(pdfFont(), "normal");
     doc.setFontSize(6.5);
     doc.text(String(p.nr ?? i + 1), colX[0] + 1.5, y + 3.5);
     doc.text(
-      pdfSafe((p.denumire || "").slice(0, 55)),
+      ((p.denumire || "").slice(0, 55)),
       colX[1] + 0.8,
       y + 3.5
     );
-    doc.text(pdfSafe((p.cod || "").slice(0, 16)), colX[2] + 0.8, y + 3.5);
-    doc.text(pdfSafe(p.cantitate || ""), colX[3] + 0.8, y + 3.5);
-    doc.text(pdfSafe(p.pretEur || ""), colX[4] + 0.8, y + 3.5);
+    doc.text(((p.cod || "").slice(0, 16)), colX[2] + 0.8, y + 3.5);
+    doc.text((p.cantitate || ""), colX[3] + 0.8, y + 3.5);
+    doc.text((p.pretEur || ""), colX[4] + 0.8, y + 3.5);
     y += rowH;
   }
   y += 3;
@@ -513,17 +490,17 @@ export async function generateFisaPdf(
     doc.setDrawColor(30);
     doc.setLineWidth(0.3);
     doc.rect(x, yy, w, h);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(pdfFont(), "bold");
     doc.setFontSize(5.8);
-    doc.text(pdfSafe(title), x + 1.2, yy + 3.2);
-    doc.setFont("helvetica", "normal");
+    doc.text((title), x + 1.2, yy + 3.2);
+    doc.setFont(pdfFont(), "normal");
     doc.setFontSize(7.5);
-    const bodyLines = doc.splitTextToSize(pdfSafe(body || ""), w - 2.5);
+    const bodyLines = doc.splitTextToSize((body || ""), w - 2.5);
     doc.text(bodyLines.slice(0, 2), x + 1.2, yy + 7.5);
     if (hint) {
       doc.setFontSize(5.5);
       doc.setTextColor(90);
-      doc.text(pdfSafe(hint), x + 1.2, yy + h - 2);
+      doc.text((hint), x + 1.2, yy + h - 2);
       doc.setTextColor(20);
     }
   };
@@ -567,9 +544,9 @@ export async function generateFisaPdf(
   y += 12.5;
 
   // Observatii
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(7.5);
-  doc.text(pdfSafe(L.observatii) + ":", margin, y);
+  doc.text((L.observatii) + ":", margin, y);
   y += 1.2;
   const obsH = 16;
   if (y + obsH > pageH - 28) {
@@ -582,9 +559,9 @@ export async function generateFisaPdf(
   y += obsH + 2.5;
 
   // Motive inlocuire
-  doc.setFont("helvetica", "bold");
+  doc.setFont(pdfFont(), "bold");
   doc.setFontSize(7);
-  doc.text(pdfSafe(L.motive), margin, y);
+  doc.text((L.motive), margin, y);
   y += 1.2;
   const motH = 12;
   if (y + motH > pageH - 18) {
@@ -601,18 +578,18 @@ export async function generateFisaPdf(
     doc.addPage();
     y = 14;
   }
-  doc.setFont("helvetica", "normal");
+  doc.setFont(pdfFont(), "normal");
   doc.setFontSize(7);
   doc.setDrawColor(60);
   doc.line(margin, y + 6, margin + 70, y + 6);
-  doc.text(pdfSafe(L.clientReceptionare), margin, y);
+  doc.text((L.clientReceptionare), margin, y);
   doc.line(margin + contentW - 70, y + 6, margin + contentW, y + 6);
-  doc.text(pdfSafe(L.tehnicieni), margin + contentW - 70, y);
+  doc.text((L.tehnicieni), margin + contentW - 70, y);
   doc.setFontSize(6);
   doc.setTextColor(100);
-  doc.text(pdfSafe(fisa.semnaturaClient || ""), margin, y + 9);
+  doc.text((fisa.semnaturaClient || ""), margin, y + 9);
   doc.text(
-    pdfSafe(fisa.semnaturaTehnician || ""),
+    (fisa.semnaturaTehnician || ""),
     margin + contentW - 70,
     y + 9
   );
@@ -622,14 +599,14 @@ export async function generateFisaPdf(
   const pageCount = doc.getNumberOfPages();
   for (let p = 1; p <= pageCount; p++) {
     doc.setPage(p);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(pdfFont(), "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(120);
     const stamp = new Date().toLocaleString(
       loc === "en" ? "en-GB" : loc === "pl" ? "pl-PL" : "ro-RO"
     );
     doc.text(
-      `${pdfSafe(L.footer)} · ${stamp}`,
+      `${(L.footer)} · ${stamp}`,
       pageW / 2,
       pageH - 5,
       { align: "center" }
@@ -649,13 +626,32 @@ export function downloadBlob(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export async function sharePdf(blob: Blob, filename: string) {
+/** Locale-aware PDF download basename prefix (without trailing underscore). */
+export function pdfFilePrefix(locale: PdfLocale | string): string {
+  const loc = resolveLocale(locale);
+  if (loc === "en") return "JobSheet";
+  if (loc === "pl") return "Protokol";
+  return "Fisa";
+}
+
+export function pdfShareText(locale: PdfLocale | string): string {
+  const loc = resolveLocale(locale);
+  if (loc === "en") return "Querra job sheet";
+  if (loc === "pl") return "Protokół serwisowy Querra";
+  return "Fișă service Querra";
+}
+
+export async function sharePdf(
+  blob: Blob,
+  filename: string,
+  shareText?: string
+) {
   const file = new File([blob], filename, { type: "application/pdf" });
   if (navigator.share && navigator.canShare?.({ files: [file] })) {
     await navigator.share({
       files: [file],
       title: filename,
-      text: "Querra service sheet",
+      text: shareText || "Querra",
     });
     return true;
   }

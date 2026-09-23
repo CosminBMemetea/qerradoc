@@ -150,7 +150,10 @@ function normalizeDate(d: string): string {
   return `${year}-${month}-${day}`;
 }
 
-export const SAMPLE_WHATSAPP = `Bună, client Hotel Belvedere Oradea, locație str. Republicii 12.
+export type SampleLocale = "ro" | "en" | "pl";
+
+const SAMPLE_WHATSAPP_BY_LOCALE: Record<SampleLocale, string> = {
+  ro: `Bună, client Hotel Belvedere Oradea, locație str. Republicii 12.
 Utilaj: Kärcher B 60 W Bp, serie KBH2045678, ore 1842.
 Reclamație: nu aspiră bine, filtru colmatat, perie uzată.
 Anunțat pe 18.09.2026, intervenție azi.
@@ -158,22 +161,133 @@ Manoperă 1.5 ore, deplasare 14 km.
 Piese:
 - Filtru HEPA x1 cod 6.414-631.0
 - Perie cilindrică x1
-Tehnician: Ion Popescu`;
+Tehnician: Ion Popescu`,
+  en: `Hi, customer CityGate Business Centre Manchester, site Deansgate 120.
+Machine: Nilfisk SC500 53 B, serial NF-SC500-55102, hours 2105.
+Fault: poor suction, clogged filter, worn cylindrical brush.
+Reported 18.09.2026, job today.
+Labour 1.5 h, travel 14 km.
+Parts:
+- HEPA filter x1 code 6.414-631.0
+- Cylindrical brush x1
+Engineer: James Wilson`,
+  pl: `Dzień dobry, klient Hotel Piast Wrocław, adres ul. Świdnicka 15.
+Urządzenie: Kärcher B 60 W Bp, nr seryjny KB60-2024-77103, motogodziny 1760.
+Usterka: słabe ssanie, filtr zatkany, zużyta szczotka cylindryczna.
+Zgłoszono 18.09.2026, naprawa dziś.
+Robocizna 1.5 h, dojazd 9 km.
+Części:
+- Filtr HEPA x1 kod 6.414-631.0
+- Szczotka cylindryczna x1
+Technik: Jan Kowalski`,
+};
 
-export function demoFillFromPhoto(filename?: string): Partial<Fisa> {
-  const tip: TipFisa = /revizie/i.test(filename || "")
+/** @deprecated Prefer sampleWhatsApp(locale) — kept as RO default for older imports. */
+export const SAMPLE_WHATSAPP = SAMPLE_WHATSAPP_BY_LOCALE.ro;
+
+export function sampleWhatsApp(locale: string = "ro"): string {
+  if (locale === "en" || locale === "pl") return SAMPLE_WHATSAPP_BY_LOCALE[locale];
+  return SAMPLE_WHATSAPP_BY_LOCALE.ro;
+}
+
+export function demoFillFromPhoto(
+  filename?: string,
+  locale: string = "ro"
+): Partial<Fisa> {
+  const tip: TipFisa = /revizie|service|przegl[aą]d/i.test(filename || "")
     ? "Revizie"
-    : /pif|punere/i.test(filename || "")
+    : /pif|punere|commission/i.test(filename || "")
       ? "Punere în funcțiune"
       : "Reparație";
+
+  const brandFromName = filename?.match(/nilfisk|kärcher|karcher|tennant/i)
+    ? filename.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ")
+    : null;
+
+  if (locale === "en") {
+    return {
+      tip,
+      client: "Northern Facilities Ltd",
+      proprietar: "Northern Facilities Ltd",
+      locatie: "Deansgate 120, Manchester M3 2GA",
+      modelUtilaj: brandFromName || "Nilfisk SC500",
+      serie: "NF" + String(Math.floor(100000 + Math.random() * 899999)),
+      oreFunctionare: "2156",
+      manoperaOre: "2",
+      deplasareKm: "22",
+      deplasareDaNu: "DA",
+      reclamatie:
+        "Machine not vacuuming properly; check filter and vacuum system. Filled from photo (demo).",
+      dataAnuntarii: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
+      dataInterventiei: new Date().toISOString().slice(0, 10),
+      observatii: "Asset photo attached to job sheet.",
+      motiveInlocuire: "Normal filter wear after operating hours.",
+      piese: (() => {
+        const p = EMPTY_PIESE();
+        p[0] = {
+          nr: 1,
+          denumire: "Panel filter",
+          cod: "56116026",
+          cantitate: "1",
+          pretEur: "38.00",
+        };
+        p[1] = {
+          nr: 2,
+          denumire: "Tank gasket",
+          cod: "G-SC500",
+          cantitate: "1",
+          pretEur: "12.50",
+        };
+        return p;
+      })(),
+    };
+  }
+
+  if (locale === "pl") {
+    return {
+      tip,
+      client: "CleanPro Wrocław Sp. z o.o.",
+      proprietar: "CleanPro Wrocław Sp. z o.o.",
+      locatie: "ul. Świdnicka 15, Wrocław",
+      modelUtilaj: brandFromName || "Nilfisk SC500",
+      serie: "NF" + String(Math.floor(100000 + Math.random() * 899999)),
+      oreFunctionare: "2156",
+      manoperaOre: "2",
+      deplasareKm: "22",
+      deplasareDaNu: "DA",
+      reclamatie:
+        "Urządzenie słabo odsysa; sprawdzić filtr i układ ssący. Uzupełnione ze zdjęcia (demo).",
+      dataAnuntarii: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
+      dataInterventiei: new Date().toISOString().slice(0, 10),
+      observatii: "Zdjęcie urządzenia dołączone do protokołu.",
+      motiveInlocuire: "Naturalne zużycie filtra po motogodzinach.",
+      piese: (() => {
+        const p = EMPTY_PIESE();
+        p[0] = {
+          nr: 1,
+          denumire: "Filtr panelowy",
+          cod: "56116026",
+          cantitate: "1",
+          pretEur: "38.00",
+        };
+        p[1] = {
+          nr: 2,
+          denumire: "Uszczelka zbiornika",
+          cod: "G-SC500",
+          cantitate: "1",
+          pretEur: "12.50",
+        };
+        return p;
+      })(),
+    };
+  }
+
   return {
     tip,
     client: "SC Curățenie Plus SRL",
     proprietar: "SC Curățenie Plus SRL",
     locatie: "Oradea, str. Independenței 45",
-    modelUtilaj: filename?.match(/nilfisk|kärcher|karcher|tennant/i)
-      ? filename.replace(/\.[^.]+$/, "").replace(/[_-]/g, " ")
-      : "Nilfisk SC500",
+    modelUtilaj: brandFromName || "Nilfisk SC500",
     serie: "NF" + String(Math.floor(100000 + Math.random() * 899999)),
     oreFunctionare: "2156",
     manoperaOre: "2",

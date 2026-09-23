@@ -13,12 +13,12 @@ async function main() {
     const settings = {
       companyName: firmExample(loc),
       cui:
-        loc === "en" ? "GB123456789" : loc === "pl" ? "PL5250000000" : "RO12345678",
+        loc === "en" ? "12345678" : loc === "pl" ? "5250000000" : "RO12345678",
       address:
         loc === "en"
           ? "Manchester, UK"
           : loc === "pl"
-            ? "Wroclaw, Polska"
+            ? "Wrocław, Polska"
             : "Oradea, Bihor",
       phone:
         loc === "en"

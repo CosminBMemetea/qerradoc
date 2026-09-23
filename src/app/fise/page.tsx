@@ -9,6 +9,7 @@ import { seedDemoFisa } from "@/lib/seed";
 import { loadDemo } from "@/lib/demos";
 import type { Fisa, TemplateKind } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
+import { techExample } from "@/lib/defaults";
 
 export default function FiseListPage() {
   const { t, locale } = useI18n();
@@ -31,7 +32,7 @@ export default function FiseListPage() {
     setSeeding(true);
     try {
       const s = await getSession();
-      await fn(s?.technicianName || "Ion Popescu");
+      await fn(s?.technicianName || techExample(locale));
       await reload();
     } finally {
       setSeeding(false);
@@ -39,7 +40,7 @@ export default function FiseListPage() {
   }
 
   async function onSeed() {
-    await withTech((name) => seedDemoFisa(name));
+    await withTech((name) => seedDemoFisa(name, locale));
   }
 
   async function onDemo(kind: TemplateKind) {
