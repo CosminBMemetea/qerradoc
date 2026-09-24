@@ -171,7 +171,7 @@ export default function SignaturePad({ value, onChange, ariaLabel }: Props) {
 
       <div
         ref={wrapRef}
-        className="relative w-full rounded-xl border border-border bg-white dark:bg-stone-950 overflow-hidden"
+        className="relative w-full rounded-xl border border-stone-200 dark:border-stone-600 bg-white overflow-hidden"
         style={{ height: PAD_HEIGHT }}
       >
         {showImage ? (
@@ -179,12 +179,12 @@ export default function SignaturePad({ value, onChange, ariaLabel }: Props) {
           <img
             src={value}
             alt={ariaLabel || t("sig.draw")}
-            className="w-full h-full object-contain bg-white dark:bg-stone-950"
+            className="w-full h-full object-contain bg-white"
           />
         ) : (
           <>
             {!value && (
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-stone-300 dark:text-stone-600 select-none">
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-stone-400 select-none">
                 {t("sig.draw")}
               </span>
             )}

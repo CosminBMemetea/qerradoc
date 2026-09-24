@@ -220,7 +220,7 @@ const ro: Dict = {
   "settings.backupErr": "Backup eșuat. Încearcă din nou.",
 
   "settings.catalog": "Clienți & utilaje",
-  "settings.catalogTip": "Catalog local pe acest telefon. Importă din Excel/CSV sau se completează automat când salvezi o fișă. Inclus în backup.",
+  "settings.catalogTip": "Catalog local pe acest telefon. Importă din Excel/CSV (inclus fișe RO de intervenție) sau se completează automat când salvezi o fișă. Din Apple Numbers: File → Export to Excel (.xlsx). Inclus în backup.",
   "settings.catalogCounts": "{clients} clienți · {equipment} utilaje",
   "settings.catalogImport": "Importă Excel / CSV",
   "settings.catalogImporting": "Se importă…",
@@ -519,7 +519,7 @@ const en: Dict = {
   "settings.backupErr": "Backup failed. Try again.",
 
   "settings.catalog": "Clients & equipment",
-  "settings.catalogTip": "Local catalog on this phone. Import from Excel/CSV or it fills automatically when you save a sheet. Included in backup.",
+  "settings.catalogTip": "Local catalog on this phone. Import from Excel/CSV (including RO intervention sheets) or it fills automatically when you save a sheet. From Apple Numbers: File → Export to Excel (.xlsx). Included in backup.",
   "settings.catalogCounts": "{clients} clients · {equipment} machines",
   "settings.catalogImport": "Import Excel / CSV",
   "settings.catalogImporting": "Importing…",
@@ -819,7 +819,7 @@ const pl: Dict = {
   "settings.backupErr": "Kopia nieudana. Spróbuj ponownie.",
 
   "settings.catalog": "Klienci i maszyny",
-  "settings.catalogTip": "Lokalny katalog na tym telefonie. Import z Excel/CSV lub uzupełnia się automatycznie przy zapisie karty. W kopii zapasowej.",
+  "settings.catalogTip": "Lokalny katalog na tym telefonie. Import z Excel/CSV (także rumuńskie karty interwencji) lub uzupełnia się automatycznie przy zapisie karty. Z Apple Numbers: File → Export to Excel (.xlsx). W kopii zapasowej.",
   "settings.catalogCounts": "{clients} klientów · {equipment} maszyn",
   "settings.catalogImport": "Importuj Excel / CSV",
   "settings.catalogImporting": "Importowanie…",

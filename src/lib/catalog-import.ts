@@ -9,6 +9,15 @@ import {
   saveCatalogEquipment,
 } from "./db";
 import { downloadBlob } from "./pdf";
+import {
+  extractRoInterventionFields,
+  isRoInterventionLayout,
+  upsertClientFromRo,
+  upsertEquipmentFromRo,
+} from "./catalog-ro-fisa";
+
+export type { RoFisaExtract } from "./catalog-ro-fisa";
+export { isRoInterventionLayout, extractRoInterventionFields } from "./catalog-ro-fisa";
 
 export type CatalogImportMode = "upsert" | "replace";
 
@@ -79,7 +88,7 @@ const MODEL_HEADERS = new Set(
   ].map(normHeader)
 );
 const SERIE_HEADERS = new Set(
-  ["serie", "serial", "s/n", "sn", "nr seryjny", "numer seryjny"].map(
+  ["serie", "seria", "serial", "s/n", "sn", "nr seryjny", "numer seryjny"].map(
     normHeader
   )
 );
@@ -316,7 +325,9 @@ async function readFileAsArrayBuffer(file: File): Promise<ArrayBuffer> {
 /**
  * Import clients + equipment from .xlsx / .xls / .csv.
  * Prefer workbook sheets Clienti/Utilaje (also Clients/Equipment, Klienci/Urzadzenia).
+ * Also accepts classic RO intervention / fișă sheets (label/value layout).
  * Single-sheet CSV: detect by columns (Model → equipment, Client/Nume → clients).
+ * Apple Numbers: export to Excel (.xlsx) first — .numbers is not parsed in-browser.
  */
 export async function importCatalogFile(
   file: File,
@@ -351,6 +362,37 @@ export async function importCatalogFile(
     if (!sheet) continue;
     const rows = rowsFromSheet(sheet);
     if (rows.length < 1) continue;
+
+    // Classic RO fișă / intervention layout (label → adjacent value)
+    if (isRoInterventionLayout(rows)) {
+      const extracted = extractRoInterventionFields(rows);
+      const cr = upsertClientFromRo(
+        extracted,
+        sawClients ? clientsResult.list : existingClients,
+        mode === "replace" && !sawClients ? "replace" : "upsert"
+      );
+      clientsResult = {
+        list: cr.list,
+        added: clientsResult.added + cr.added,
+        updated: clientsResult.updated + cr.updated,
+        skipped: clientsResult.skipped + cr.skipped,
+      };
+      sawClients = true;
+      const er = upsertEquipmentFromRo(
+        extracted,
+        sawEquip ? equipResult.list : existingEquip,
+        mode === "replace" && !sawEquip ? "replace" : "upsert"
+      );
+      equipResult = {
+        list: er.list,
+        added: equipResult.added + er.added,
+        updated: equipResult.updated + er.updated,
+        skipped: equipResult.skipped + er.skipped,
+      };
+      sawEquip = true;
+      continue;
+    }
+
     const cols = mapColumns(rows[0]);
     const kind = detectSheetKind(sheetName, cols);
     if (kind === "clients") {
@@ -387,11 +429,17 @@ export async function importCatalogFile(
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = rowsFromSheet(sheet);
     if (rows.length >= 1) {
-      const cols = mapColumns(rows[0]);
-      if (cols.model !== undefined) {
-        equipResult = parseEquipmentRows(rows, existingEquip, mode);
-      } else if (cols.name !== undefined) {
-        clientsResult = parseClientsRows(rows, existingClients, mode);
+      if (isRoInterventionLayout(rows)) {
+        const extracted = extractRoInterventionFields(rows);
+        clientsResult = upsertClientFromRo(extracted, existingClients, mode);
+        equipResult = upsertEquipmentFromRo(extracted, existingEquip, mode);
+      } else {
+        const cols = mapColumns(rows[0]);
+        if (cols.model !== undefined) {
+          equipResult = parseEquipmentRows(rows, existingEquip, mode);
+        } else if (cols.name !== undefined) {
+          clientsResult = parseClientsRows(rows, existingClients, mode);
+        }
       }
     }
   }
