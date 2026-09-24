@@ -1,8 +1,12 @@
+import { defaultCurrencyForLocale, type CurrencyCode } from "./currency";
+
+export type { CurrencyCode } from "./currency";
+
 export type TipFisa = "Constatare" | "Reparație" | "Revizie" | "Punere în funcțiune";
 
 export type TemplateKind = "curatenie" | "tamplarie" | "stoma";
 
-/** Language of the sheet content / PDF labels / currency (locked at creation). */
+/** Language of the sheet content / PDF labels (locked at creation; also seeds the default currency). */
 export type ContentLocale = "ro" | "en" | "pl";
 
 /** Fallback when a stored fișă has no contentLocale (legacy rows → RO).
@@ -57,11 +61,18 @@ export interface Fisa {
   /** Demo / industry template badge on list */
   templateKind?: TemplateKind;
   /**
-   * Content language for this sheet (PDF labels, filename, share text, currency).
+   * Content language for this sheet (PDF labels, filename, share text).
+   * Also the fallback for `currency` when a sheet has none.
    * Locked at creation from UI locale; independent of later UI language switches.
    * Missing on legacy rows → treat as "ro" via resolveContentLocale().
    */
   contentLocale?: ContentLocale;
+  /**
+   * Currency for prices on this sheet (form, PDF headers), independent of
+   * contentLocale. Set at creation from the locale default; missing on legacy
+   * rows → resolveCurrency() falls back to the contentLocale default.
+   */
+  currency?: CurrencyCode;
   createdAt: string;
   updatedAt: string;
   reviewed: boolean;
@@ -99,7 +110,7 @@ export const EMPTY_PIESE = (): Piesa[] =>
 
 export function emptyFisa(partial?: Partial<Fisa>): Fisa {
   const now = new Date().toISOString();
-  return {
+  const base: Fisa = {
     id: crypto.randomUUID(),
     tip: "Reparație",
     nrFisa: "",
@@ -125,6 +136,13 @@ export function emptyFisa(partial?: Partial<Fisa>): Fisa {
     reviewed: false,
     contentLocale: "ro",
     ...partial,
+  };
+  // Default currency from the sheet's contentLocale unless explicitly given.
+  return {
+    ...base,
+    currency:
+      partial?.currency ??
+      defaultCurrencyForLocale(resolveContentLocale(base)),
   };
 }
 

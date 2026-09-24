@@ -4,7 +4,12 @@ import { jsPDF } from "jspdf";
 import type { Fisa, FirmSettings, TipFisa } from "./types";
 import { firmExample } from "./defaults";
 import { embedUnicodeFont, pdfFont } from "./pdf-font";
-import { currencyCode, currencySymbol } from "./currency";
+import {
+  defaultCurrencyForLocale,
+  normalizeCurrency,
+  symbolForCurrency,
+  type CurrencyCode,
+} from "./currency";
 import { ensurePdfCompatibleImage } from "./logo";
 
 export type PdfLocale = "ro" | "en" | "pl";
@@ -30,7 +35,8 @@ type Labels = {
   colDenumire: string;
   colCod: string;
   colCant: string;
-  colPret: string;
+  /** Price column header; symbol comes from the fișă's chosen currency. */
+  colPret: (symbol: string) => string;
   dataAnuntarii: string;
   clientReceptionare: string;
   clientSigHint: string;
@@ -41,7 +47,6 @@ type Labels = {
   motive: string;
   foto: string;
   footer: string;
-  currencyNote: string;
 };
 
 const LABELS: Record<PdfLocale, Labels> = {
@@ -70,7 +75,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "DENUMIRE PIESA/MATERIAL",
     colCod: "COD",
     colCant: "Cant.",
-    colPret: `PREȚ ${currencySymbol("ro")} FĂRĂ Tva/buc.`,
+    colPret: (sym) => `PREȚ ${sym} FĂRĂ Tva/buc.`,
     dataAnuntarii: "DATA ANUNTARII DEFECTIUNII",
     clientReceptionare: "CLIENT: RECEPTIONARE CONSTATARE/REPARATIE",
     clientSigHint: "SEMNATURA/STAMPILA/NUME/B.I./C.I.",
@@ -82,7 +87,6 @@ const LABELS: Record<PdfLocale, Labels> = {
       "Piesele mentionate, au fost inlocuite din urmatoarele motive:",
     foto: "FOTO UTILAJ",
     footer: "Generat cu Querra Fișă",
-    currencyNote: currencyCode("ro"),
   },
   en: {
     docIdentity: "Engineer's Job Sheet / Service Report",
@@ -109,7 +113,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "Description",
     colCod: "Part No",
     colCant: "Qty",
-    colPret: `Price ${currencySymbol("en")} ex VAT each`,
+    colPret: (sym) => `Price ${sym} ex VAT each`,
     dataAnuntarii: "Date fault reported",
     clientReceptionare: "Customer sign-off",
     clientSigHint: "Signature / name / company stamp",
@@ -120,7 +124,6 @@ const LABELS: Record<PdfLocale, Labels> = {
     motive: "Parts listed above were replaced for the following reasons:",
     foto: "Asset photo",
     footer: "Generated with Querra Job Sheet",
-    currencyNote: currencyCode("en"),
   },
   pl: {
     docIdentity: "Protokół serwisowy / przyjęcia do naprawy",
@@ -147,7 +150,7 @@ const LABELS: Record<PdfLocale, Labels> = {
     colDenumire: "Nazwa części/materiału",
     colCod: "Kod",
     colCant: "Il.",
-    colPret: `Cena ${currencySymbol("pl")} bez VAT/szt.`,
+    colPret: (sym) => `Cena ${sym} bez VAT/szt.`,
     dataAnuntarii: "Data zgłoszenia",
     clientReceptionare: "Podpis klienta",
     clientSigHint: "Podpis / pieczęć / imię i nazwisko",
@@ -158,7 +161,6 @@ const LABELS: Record<PdfLocale, Labels> = {
     motive: "Wymienione części zostały zastąpione z następujących powodów:",
     foto: "Zdjęcie urządzenia",
     footer: "Wygenerowano w Querra Karta",
-    currencyNote: currencyCode("pl"),
   },
 };
 
@@ -178,6 +180,20 @@ function tipIndex(tip: TipFisa): number {
   }
 }
 
+
+/**
+ * Currency used on the PDF: the fișă's explicit `currency`, else the default
+ * for the document language (legacy sheets without the field).
+ */
+export function pdfCurrency(
+  fisa: { currency?: string | null },
+  locale: PdfLocale | string = "ro"
+): CurrencyCode {
+  return (
+    normalizeCurrency(fisa.currency) ??
+    defaultCurrencyForLocale(resolveLocale(locale))
+  );
+}
 
 function resolveLocale(locale?: string): PdfLocale {
   if (locale === "en" || locale === "pl" || locale === "ro") return locale;
@@ -534,7 +550,8 @@ export async function generateFisaPdf(
     margin + colW[0] + colW[1] + colW[2],
     margin + colW[0] + colW[1] + colW[2] + colW[3],
   ];
-  const headers = [L.colNr, L.colDenumire, L.colCod, L.colCant, L.colPret];
+  const priceHeader = L.colPret(symbolForCurrency(pdfCurrency(fisa, loc)));
+  const headers = [L.colNr, L.colDenumire, L.colCod, L.colCant, priceHeader];
   const headH = 6;
   doc.setFillColor(235, 235, 235);
   doc.setDrawColor(30);

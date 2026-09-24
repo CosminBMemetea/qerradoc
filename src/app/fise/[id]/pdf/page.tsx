@@ -11,7 +11,9 @@ import {
   sharePdf,
   pdfFilePrefix,
   pdfShareText,
+  pdfCurrency,
 } from "@/lib/pdf";
+import { symbolForCurrency } from "@/lib/currency";
 import { docLabels } from "@/lib/pdf-summary";
 import type { ContentLocale, Fisa, FirmSettings } from "@/lib/types";
 import { resolveContentLocale } from "@/lib/types";
@@ -76,6 +78,7 @@ export default function PdfPage() {
   const contentLocaleLabel =
     contentLocale === "en" ? "EN" : contentLocale === "pl" ? "PL" : "RO";
   const L = docLabels(contentLocale);
+  const currency = fisa ? pdfCurrency(fisa, contentLocale) : null;
   const downloadName = fisa
     ? `${pdfFilePrefix(contentLocale)}_${fisa.nrFisa || fisa.id.slice(0, 8)}.pdf`
     : "";
@@ -247,6 +250,14 @@ export default function PdfPage() {
             </span>
             {fisa.piese.filter((p) => p.denumire).length} {L.pieseLines}
           </div>
+          {currency && (
+            <div>
+              <span className="text-stone-400 dark:text-stone-500">
+                {L.currency}{" "}
+              </span>
+              {symbolForCurrency(currency)} ({currency})
+            </div>
+          )}
           {(fisa.semnaturaClient ||
             fisa.semnaturaTehnician ||
             fisa.semnaturaClientDataUrl ||

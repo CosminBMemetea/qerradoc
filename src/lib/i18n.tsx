@@ -136,6 +136,8 @@ const ro: Dict = {
   "form.cod": "Cod",
   "form.cant": "Cant.",
   "form.pret": "Preț {currency}",
+  "form.currency": "Monedă",
+  "form.currencyHint": "Doar prețurile folosesc moneda; limba documentului rămâne aceeași.",
   "form.dataAnuntarii": "Data anunțării defecțiunii",
   "form.dataInterventiei": "Data intervenției tehnice",
   "form.observatii": "Observații",
@@ -152,9 +154,9 @@ const ro: Dict = {
   "form.contentLocale": "Limba documentului",
   "form.contentLocaleChange": "Schimbă limba documentului…",
   "form.contentLocaleHint":
-    "Etichetele PDF, moneda și prefixul fișierului urmează limba acestei fișe, nu limba din Setări.",
+    "Etichetele PDF și prefixul fișierului urmează limba acestei fișe, nu limba din Setări. Moneda se alege separat, la Piese.",
   "form.contentLocaleWarn":
-    "Schimbi limba documentului? PDF-ul, etichetele și moneda (lei / € / zł) vor urma noua limbă.",
+    "Schimbi limba documentului? PDF-ul și etichetele vor urma noua limbă. Moneda se schimbă doar dacă nu ai ales alta manual.",
   "tip.Constatare": "Constatare",
   "tip.Reparație": "Reparație",
   "tip.Revizie": "Revizie",
@@ -435,6 +437,8 @@ const en: Dict = {
   "form.cod": "Code",
   "form.cant": "Qty",
   "form.pret": "Price {currency}",
+  "form.currency": "Currency",
+  "form.currencyHint": "Only prices use this currency; the document language stays the same.",
   "form.dataAnuntarii": "Fault reported date",
   "form.dataInterventiei": "Service intervention date",
   "form.observatii": "Notes",
@@ -451,9 +455,9 @@ const en: Dict = {
   "form.contentLocale": "Document language",
   "form.contentLocaleChange": "Change document language…",
   "form.contentLocaleHint":
-    "PDF labels, currency and file prefix follow this sheet’s language, not the Settings UI language.",
+    "PDF labels and file prefix follow this sheet’s language, not the Settings UI language. Currency is chosen separately under Parts.",
   "form.contentLocaleWarn":
-    "Change document language? PDF labels and currency (lei / € / zł) will follow the new language.",
+    "Change document language? PDF labels will follow the new language. Currency changes only if you haven’t picked one manually.",
   "tip.Constatare": "Inspection",
   "tip.Reparație": "Repair",
   "tip.Revizie": "Service",
@@ -735,6 +739,8 @@ const pl: Dict = {
   "form.cod": "Kod",
   "form.cant": "Ilość",
   "form.pret": "Cena {currency}",
+  "form.currency": "Waluta",
+  "form.currencyHint": "Waluta dotyczy tylko cen; język dokumentu się nie zmienia.",
   "form.dataAnuntarii": "Data zgłoszenia usterki",
   "form.dataInterventiei": "Data interwencji technicznej",
   "form.observatii": "Uwagi",
@@ -751,9 +757,9 @@ const pl: Dict = {
   "form.contentLocale": "Język dokumentu",
   "form.contentLocaleChange": "Zmień język dokumentu…",
   "form.contentLocaleHint":
-    "Etykiety PDF, waluta i prefiks pliku zależą od języka tej karty, nie od języka w Ustawieniach.",
+    "Etykiety PDF i prefiks pliku zależą od języka tej karty, nie od języka w Ustawieniach. Walutę wybiera się osobno w sekcji Części.",
   "form.contentLocaleWarn":
-    "Zmienić język dokumentu? Etykiety PDF i waluta (lei / € / zł) będą zgodne z nowym językiem.",
+    "Zmienić język dokumentu? Etykiety PDF będą zgodne z nowym językiem. Waluta zmieni się tylko, jeśli nie wybrano jej ręcznie.",
   "tip.Constatare": "Ekspertyza",
   "tip.Reparație": "Naprawa",
   "tip.Revizie": "Przegląd",

@@ -1,3 +1,4 @@
+import { defaultCurrencyForLocale } from "./currency";
 import { emptyFisa, EMPTY_PIESE, type Fisa, type Piesa, type TemplateKind } from "./types";
 import { saveFisa } from "./db";
 
@@ -408,7 +409,11 @@ export function buildDemo(
   const byLocale = BUILDERS[kind];
   const builder = byLocale[locale] || byLocale.ro;
   const fisa = builder(technicianName);
-  return { ...fisa, contentLocale: locale };
+  return {
+    ...fisa,
+    contentLocale: locale,
+    currency: defaultCurrencyForLocale(locale),
+  };
 }
 
 /** Persist a locale-aware demo. Prefer this from the list page. */

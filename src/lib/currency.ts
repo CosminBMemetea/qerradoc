@@ -1,23 +1,40 @@
-/** App / PDF locales that carry a display currency. */
+import type { ContentLocale } from "./types";
+
+/** App / PDF locales that carry a default display currency. */
 export type CurrencyLocale = "ro" | "en" | "pl";
 
-/**
- * Locale currency symbol for form placeholders and PDF column headers.
- * RO → lei (RON), EN → € (EUR), PL → zł (PLN).
- */
-export function currencySymbol(locale: CurrencyLocale): string {
-  switch (locale) {
-    case "en":
-      return "€";
-    case "pl":
-      return "zł";
-    default:
-      return "lei";
-  }
+/** Small, explicit set of per-fișă currencies (ISO 4217 codes). */
+export type CurrencyCode = "RON" | "EUR" | "PLN" | "GBP" | "USD";
+
+/** Picker order. */
+export const CURRENCIES: readonly CurrencyCode[] = [
+  "RON",
+  "EUR",
+  "PLN",
+  "GBP",
+  "USD",
+] as const;
+
+const SYMBOLS: Record<CurrencyCode, string> = {
+  RON: "lei",
+  EUR: "€",
+  PLN: "zł",
+  GBP: "£",
+  USD: "$",
+};
+
+export function isCurrencyCode(v: unknown): v is CurrencyCode {
+  return typeof v === "string" && (CURRENCIES as readonly string[]).includes(v);
 }
 
-/** ISO-style currency code for notes / metadata. */
-export function currencyCode(locale: CurrencyLocale): string {
+/**
+ * Default currency for a document language (used at creation and as
+ * read-time fallback for sheets without `currency`).
+ * RO → RON (lei), EN → EUR (€), PL → PLN (zł).
+ */
+export function defaultCurrencyForLocale(
+  locale: CurrencyLocale | string | null | undefined
+): CurrencyCode {
   switch (locale) {
     case "en":
       return "EUR";
@@ -26,4 +43,51 @@ export function currencyCode(locale: CurrencyLocale): string {
     default:
       return "RON";
   }
+}
+
+/** Normalize a stored / imported value ("eur", " RON ") → CurrencyCode | undefined. */
+export function normalizeCurrency(v: unknown): CurrencyCode | undefined {
+  if (typeof v !== "string") return undefined;
+  const up = v.trim().toUpperCase();
+  return isCurrencyCode(up) ? up : undefined;
+}
+
+/**
+ * Currency for a fișă: explicit `currency` if valid, otherwise the
+ * contentLocale default (legacy rows without the field).
+ */
+export function resolveCurrency(
+  fisa:
+    | { currency?: string | null; contentLocale?: ContentLocale | string | null }
+    | null
+    | undefined
+): CurrencyCode {
+  const explicit = normalizeCurrency(fisa?.currency);
+  if (explicit) return explicit;
+  const raw = fisa?.contentLocale;
+  const loc = raw ? String(raw).toLowerCase().slice(0, 2) : "ro";
+  return defaultCurrencyForLocale(loc);
+}
+
+/** Display symbol for a currency code: lei, €, zł, £, $. */
+export function symbolForCurrency(code: CurrencyCode): string {
+  return SYMBOLS[code] ?? SYMBOLS.RON;
+}
+
+/** Picker label, e.g. "€ · EUR". */
+export function currencyOptionLabel(code: CurrencyCode): string {
+  return `${symbolForCurrency(code)} · ${code}`;
+}
+
+/**
+ * Locale default currency symbol (legacy helper).
+ * RO → lei (RON), EN → € (EUR), PL → zł (PLN).
+ */
+export function currencySymbol(locale: CurrencyLocale): string {
+  return symbolForCurrency(defaultCurrencyForLocale(locale));
+}
+
+/** Locale default ISO code (legacy helper). */
+export function currencyCode(locale: CurrencyLocale): string {
+  return defaultCurrencyForLocale(locale);
 }

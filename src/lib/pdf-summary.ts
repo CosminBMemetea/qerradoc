@@ -12,6 +12,7 @@ export type DocSummaryLabels = {
   reclamatie: string;
   piese: string;
   pieseLines: string;
+  currency: string;
   yes: string;
   no: string;
   clientSig: string;
@@ -31,6 +32,7 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     reclamatie: "Reclamație:",
     piese: "Piese:",
     pieseLines: "linii",
+    currency: "Monedă:",
     yes: "DA",
     no: "NU",
     clientSig: "Semnătură client:",
@@ -53,6 +55,7 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     reclamatie: "Complaint:",
     piese: "Parts:",
     pieseLines: "lines",
+    currency: "Currency:",
     yes: "YES",
     no: "NO",
     clientSig: "Client signature:",
@@ -75,6 +78,7 @@ const DOC_LABELS: Record<ContentLocale, DocSummaryLabels> = {
     reclamatie: "Reklamacja:",
     piese: "Części:",
     pieseLines: "pozycji",
+    currency: "Waluta:",
     yes: "TAK",
     no: "NIE",
     clientSig: "Podpis klienta:",

@@ -10,7 +10,13 @@ import type {
 } from "@/lib/types";
 import { TIPURI, resolveContentLocale } from "@/lib/types";
 import { useI18n, LOCALE_LABELS } from "@/lib/i18n";
-import { currencySymbol } from "@/lib/currency";
+import {
+  CURRENCIES,
+  defaultCurrencyForLocale,
+  resolveCurrency,
+  symbolForCurrency,
+  type CurrencyCode,
+} from "@/lib/currency";
 import { getCatalogClients, getCatalogEquipment } from "@/lib/db";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
@@ -26,9 +32,12 @@ export default function FisaForm({
   const { t, dateLang } = useI18n();
   const clientListId = useId();
   const equipListId = useId();
+  const currencyLabelId = useId();
   const [clients, setClients] = useState<CatalogClient[]>([]);
   const [equipment, setEquipment] = useState<CatalogEquipment[]>([]);
   const contentLocale = resolveContentLocale(fisa);
+  const currency = resolveCurrency(fisa);
+  const currencySym = symbolForCurrency(currency);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +60,14 @@ export default function FisaForm({
   const onContentLocaleChange = (next: ContentLocale) => {
     if (next === contentLocale) return;
     if (!confirm(t("form.contentLocaleWarn"))) return;
-    set("contentLocale", next);
+    // Currency follows the language only while it is still the old default;
+    // an explicitly picked currency is kept.
+    const followsLocale = currency === defaultCurrencyForLocale(contentLocale);
+    onChange({
+      ...fisa,
+      contentLocale: next,
+      currency: followsLocale ? defaultCurrencyForLocale(next) : currency,
+    });
   };
 
   const setPiesa = (
@@ -342,6 +358,52 @@ export default function FisaForm({
         <p className="text-xs text-stone-400 dark:text-stone-500 mb-2">
           {t("hint.piese")}
         </p>
+        <div className="qf-card p-3 mb-3">
+          <div
+            id={currencyLabelId}
+            className="text-xs font-medium text-foreground mb-1.5"
+          >
+            {t("form.currency")}
+          </div>
+          <div
+            role="radiogroup"
+            aria-labelledby={currencyLabelId}
+            className="grid grid-cols-5 gap-1.5"
+          >
+            {CURRENCIES.map((c) => {
+              const active = c === currency;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  title={c}
+                  onClick={() => set("currency", c as CurrencyCode)}
+                  className={`min-h-[44px] rounded-xl border px-1 leading-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                    active
+                      ? "bg-indigo-600 text-white border-indigo-700"
+                      : "bg-card border-border text-foreground active:bg-stone-50 dark:active:bg-stone-800"
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">
+                    {symbolForCurrency(c)}
+                  </span>
+                  <span
+                    className={`block text-[10px] ${
+                      active ? "text-indigo-100" : "text-muted"
+                    }`}
+                  >
+                    {c}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted mt-1.5 leading-snug">
+            {t("form.currencyHint")}
+          </p>
+        </div>
         <div className="space-y-3">
           {fisa.piese.slice(0, 15).map((p, idx) => (
             <div key={p.nr} className="qf-card p-3">
@@ -370,7 +432,7 @@ export default function FisaForm({
                 />
                 <input
                   className={inputCls}
-                  placeholder={t("form.pret", { currency: currencySymbol(contentLocale) })}
+                  placeholder={t("form.pret", { currency: currencySym })}
                   inputMode="decimal"
                   value={p.pretEur}
                   onChange={(e) => setPiesa(idx, "pretEur", e.target.value)}

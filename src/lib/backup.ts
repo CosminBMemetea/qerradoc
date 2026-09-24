@@ -9,6 +9,7 @@ import type {
   CatalogEquipment,
 } from "./types";
 import { resolveContentLocale } from "./types";
+import { normalizeCurrency } from "./currency";
 import {
   listFise,
   getSettings,
@@ -61,6 +62,9 @@ function softNormalizeFisa(raw: unknown): Fisa | null {
   return {
     ...f,
     contentLocale: resolveContentLocale(f),
+    // Per-sheet currency: keep valid codes; missing/invalid → undefined
+    // (read-time fallback to the contentLocale default).
+    currency: normalizeCurrency(raw.currency),
     // Soft-normalize optional image fields — ignore non-string junk
     photoDataUrl: optStr(raw.photoDataUrl),
     audioNoteDataUrl: optStr(raw.audioNoteDataUrl),

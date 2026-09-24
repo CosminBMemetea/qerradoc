@@ -10,7 +10,8 @@
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
     "start:lan": "next start -H 0.0.0.0 -p 3000",
     "preview:pdf": "npx --yes tsx scripts/preview-pdf.ts",
-    "smoke:locale": "node scripts/smoke-content-locale.mjs && npx --yes tsx scripts/smoke-content-locale.ts"
+    "smoke:locale": "node scripts/smoke-content-locale.mjs && npx --yes tsx scripts/smoke-content-locale.ts",
+    "smoke:currency": "npx --yes tsx scripts/smoke-currency.ts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
