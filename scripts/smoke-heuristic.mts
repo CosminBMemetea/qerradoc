@@ -73,11 +73,33 @@ const HM: [string, string | undefined, string | undefined][] = [
   ["an hour and a half", undefined, "1.5"],
   ["o oră și jumătate", undefined, "1.5"],
   ["one and a half hours", undefined, "1.5"],
+  ["2105 operating hours", "2105", undefined],
+  ["operating hours 2105, two hours", "2105", "2"],
+  ["2 i pół godziny", undefined, "2.5"],
+  ["dwie i pół godziny", undefined, "2.5"],
+  ["2105 hours meter, two hours labour", "2105", "2"],
 ];
 for (const [txt, meter, labour] of HM) {
   const r = parseWhatsAppText(txt);
   assert.equal(r.oreFunctionare, meter, `meter: ${txt}`);
   assert.equal(r.manoperaOre, labour, `labour: ${txt}`);
+}
+// No commas: "N ore/hours" is the hours quantity, "N km" is distance (63a item 4).
+const NC: [string, string | undefined, string | undefined, string | undefined][] = [
+  // text, meter, labour, km
+  ["4 ore 99 km", undefined, "4", "99"],
+  ["două ore 35 km", undefined, "2", "35"],
+  ["two hours 22 km", undefined, "2", "22"],
+  ["dwie godziny 18 kilometrów", undefined, "2", "18"],
+  ["3 ore 40 kilometri", undefined, "3", "40"],
+  ["contor 1842 ore 2 ore 35 km", "1842", "2", "35"],
+  ["hours 2105 labour 1.5 h travel 14 km", "2105", "1.5", "14"],
+];
+for (const [txt, meter, labour, km] of NC) {
+  const r = parseWhatsAppText(txt);
+  assert.equal(r.oreFunctionare, meter, `meter: ${txt}`);
+  assert.equal(r.manoperaOre, labour, `labour: ${txt}`);
+  assert.equal(r.deplasareKm, km, `km: ${txt}`);
 }
 
 // WhatsApp samples (ro/en/pl).

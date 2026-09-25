@@ -68,14 +68,14 @@ const NUM_WORD_ALTS = Object.keys(NUM_WORDS)
   .sort((a, b) => b.length - a.length)
   .join("|");
 /** A number as digits or a (ro/en/pl) word, optionally "and a half". */
-const NUM = `(\\d+(?:[.,]\\d+)?|p[óo][łl]tor(?:a|ej)|(?:${NUM_WORD_ALTS})(?:\\s+(?:and\\s+a\\s+half|[șs]i\\s+jum[ăa]tate|i\\s+p[óo][łl]))?)${WE}`;
+const NUM = `((?:\\d+(?:[.,]\\d+)?|p[óo][łl]tor(?:a|ej)|(?:${NUM_WORD_ALTS}))(?:\\s+(?:and\\s+a\\s+half|[șs]i\\s+jum[ăa]tate|i\\s+p[óo][łl]))?)${WE}`;
 
 function numValue(raw: string): string {
   const s = raw.trim().toLowerCase();
-  if (/^\d/.test(s)) return s.replace(",", ".");
   if (/^p[óo][łl]tor/.test(s)) return "1.5";
-  const half = /(?:half|jum[ăa]tate|p[óo][łl])$/.test(s);
-  const base = NUM_WORDS[s.split(/\s+/)[0]];
+  const half = /\s(?:half|jum[ăa]tate|p[óo][łl])$/.test(s);
+  const first = s.split(/\s+/)[0];
+  const base = /^\d/.test(first) ? Number(first.replace(",", ".")) : NUM_WORDS[first];
   if (base === undefined) return "";
   return String(half ? base + 0.5 : base);
 }
@@ -162,12 +162,29 @@ export function parseWhatsAppText(text: string): Partial<Fisa> {
   // ("1842 ore de funcționare", "2105 hours on the meter", "1842 godzin pracy",
   // "1842 motogodzin").
   const METER_BEFORE =
-    "ore\\s*(?:de\\s*)?func\\p{L}*|ore|contor(?:ul)?|licznik\\p{L}*|hours?\\s*meter|hour-meter|meter|hours|motogodzin\\p{L}*";
+    "ore\\s*(?:de\\s*)?func\\p{L}*|(?:operating|running|engine)\\s+hours?|ore|contor(?:ul)?|licznik\\p{L}*|hours?\\s*meter|hour-meter|meter|hours|motogodzin\\p{L}*";
   const METER_AFTER =
-    "(?:ore|or[ăa]|h|hours?|godzin\\p{L}*)\\s+(?:de\\s+)?(?:func\\p{L}*|pracy|on\\s+the\\s+(?:hour\\s+)?meter|on\\s+the\\s+counter|la\\s+contor|(?:na\\s+)?liczniku)|motogodzin\\p{L}*|mth";
-  const meterBefore = kw(METER_BEFORE, "\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)").exec(t);
+    "(?:ore|or[ăa]|h|hours?|godzin\\p{L}*)\\s+(?:de\\s+)?(?:func\\p{L}*|pracy|meter|counter|on\\s+the\\s+(?:hour\\s+)?meter|on\\s+the\\s+counter|la\\s+contor|(?:na\\s+)?liczniku)|(?:operating|running|engine)\\s+hours?|motogodzin\\p{L}*|mth";
+  // A number followed by km is distance; "4 ore 99 km" = 4 h labour + 99 km,
+  // so a bare "ore"/"hours" keyword that itself follows a number is a unit,
+  // not the hour-meter keyword.
+  const KM_NEXT = new RegExp(`^\\s*(?:km|kilometr\\p{L}*|kilometer\\p{L}*|kilometre\\p{L}*)${WE}`, "iu");
+  let meterBefore: RegExpExecArray | null = null;
+  {
+    const re = new RegExp(`${WB}(${METER_BEFORE})\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)(?![\\d.,]*\\d)`, "giu");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(t))) {
+      const kwStart = m.index + m[0].indexOf(m[1]);
+      const after = t.slice(m.index + m[0].length);
+      if (KM_NEXT.test(after)) continue;
+      const bareUnit = /^(?:ore|hours)$/i.test(m[1]);
+      if (bareUnit && new RegExp(`${NUM.replace(WE, "")}\\s*$`, "iu").test(t.slice(0, kwStart))) continue;
+      meterBefore = m;
+      break;
+    }
+  }
   const meterAfter = new RegExp(`${WB}(\\d+(?:[.,]\\d+)?)\\s*(?:${METER_AFTER})${WE}`, "iu").exec(t);
-  const meter = meterBefore?.[1] ?? meterAfter?.[1];
+  const meter = meterBefore?.[2] ?? meterAfter?.[1];
   if (meter) result.oreFunctionare = meter.replace(",", ".");
 
   // Manoperă — "manoperă 2", "Labour 1.5 h", "două ore manoperă", "dwie godziny robocizny".
@@ -190,7 +207,9 @@ export function parseWhatsAppText(text: string): Partial<Fisa> {
     // → labour, unless it is the hour meter (keyword before or after) or a
     // value of 100+ h (that is a meter reading, never labour).
     const bare = new RegExp(`${WB}${NUM.replace(WE, "")}\\s*${UNIT_H}${WE}`, "giu");
-    const meterNear = new RegExp(`(?:${METER_BEFORE})\\s*[:\\-]?\\s*$`, "iu");
+    // Bare "ore"/"hours" before the number isn't a meter keyword here ("1842 ore 2 ore").
+    const METER_STRONG = METER_BEFORE.split("|").filter((k) => k !== "ore" && k !== "hours").join("|");
+    const meterNear = new RegExp(`(?:${METER_STRONG})\\s*[:\\-]?\\s*$`, "iu");
     const meterNext = new RegExp(`^\\s*(?:de\\s+)?(?:func\\p{L}*|pracy|on\\s+the|meter|counter|contor|la\\s+contor|(?:na\\s+)?liczniku)`, "iu");
     let m: RegExpExecArray | null;
     while ((m = bare.exec(t))) {
@@ -208,7 +227,7 @@ export function parseWhatsAppText(text: string): Partial<Fisa> {
   // Deplasare km.
   const kmMatch =
     kw("deplasare|travel|dojazd", `\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)`).exec(t) ||
-    new RegExp(`${WB}(\\d+(?:[.,]\\d+)?)\\s*km${WE}`, "iu").exec(t);
+    new RegExp(`${WB}(\\d+(?:[.,]\\d+)?)\\s*(?:km|kilometr\\p{L}*|kilometer\\p{L}*|kilometre\\p{L}*)${WE}`, "iu").exec(t);
   if (kmMatch) {
     result.deplasareKm = kmMatch[1].replace(",", ".");
     result.deplasareDaNu = "DA";
