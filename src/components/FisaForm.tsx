@@ -21,6 +21,7 @@ import { getCatalogClients, getCatalogEquipment } from "@/lib/db";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
 import SignaturePad from "./SignaturePad";
+import DatePicker from "./DatePicker";
 
 export default function FisaForm({
   fisa,
@@ -29,7 +30,7 @@ export default function FisaForm({
   fisa: Fisa;
   onChange: (f: Fisa) => void;
 }) {
-  const { t, dateLang } = useI18n();
+  const { t } = useI18n();
   const clientListId = useId();
   const equipListId = useId();
   const currencyLabelId = useId();
@@ -450,21 +451,17 @@ export default function FisaForm({
 
       <div className="grid grid-cols-1 gap-1">
         <Field label={t("form.dataAnuntarii")} hint={t("hint.dates")}>
-          <input
-            type="date"
-            lang={dateLang}
-            className={inputCls}
+          <DatePicker
+            label={t("form.dataAnuntarii")}
             value={fisa.dataAnuntarii}
-            onChange={(e) => set("dataAnuntarii", e.target.value)}
+            onChange={(v) => set("dataAnuntarii", v)}
           />
         </Field>
         <Field label={t("form.dataInterventiei")}>
-          <input
-            type="date"
-            lang={dateLang}
-            className={inputCls}
+          <DatePicker
+            label={t("form.dataInterventiei")}
             value={fisa.dataInterventiei}
-            onChange={(e) => set("dataInterventiei", e.target.value)}
+            onChange={(v) => set("dataInterventiei", v)}
           />
         </Field>
       </div>

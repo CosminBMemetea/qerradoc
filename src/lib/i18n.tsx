@@ -18,7 +18,7 @@ export const SPEECH_LANG: Record<Locale, string> = {
   pl: "pl-PL",
 };
 
-/** BCP-47 for <input type="date"> / native pickers */
+/** BCP-47 for Intl month/weekday names in the in-app DatePicker (native date inputs ignore this). */
 export const DATE_LANG: Record<Locale, string> = {
   ro: "ro-RO",
   en: "en-GB",
@@ -322,6 +322,11 @@ const ro: Dict = {
   "hint.observatii": "Ce ai făcut pe teren, instructaj, termene următoare.",
   "hint.motiveInlocuire": "De ce ai înlocuit piesele (uzură, defect, indicație clinică).",
   "hint.dates": "Când s-a anunțat problema și când ai intervenit.",
+  "date.today": "Azi",
+  "date.clear": "Șterge",
+  "date.placeholder": "zz.ll.aaaa",
+  "date.prevMonth": "Luna anterioară",
+  "date.nextMonth": "Luna următoare",
   "hint.semnaturi": "Numele (etichetă) + desenează semnătura pe ecran cu degetul.",
 
   "guide.title": "Ghid rapid",
@@ -633,6 +638,11 @@ const en: Dict = {
   "hint.observatii": "What you did on site, briefing, next dates.",
   "hint.motiveInlocuire": "Why parts were replaced (wear, fault, clinical indication).",
   "hint.dates": "When the issue was reported and when you attended.",
+  "date.today": "Today",
+  "date.clear": "Clear",
+  "date.placeholder": "dd/mm/yyyy",
+  "date.prevMonth": "Previous month",
+  "date.nextMonth": "Next month",
   "hint.semnaturi": "Typed name (label) + draw the signature on screen with your finger.",
 
   "guide.title": "Quick guide",
@@ -946,6 +956,11 @@ const pl: Dict = {
   "hint.observatii": "Co zrobiłeś na miejscu, instruktaż, kolejne terminy.",
   "hint.motiveInlocuire": "Dlaczego wymieniono części (zużycie, usterka, wskazanie kliniczne).",
   "hint.dates": "Kiedy zgłoszono problem i kiedy była interwencja.",
+  "date.today": "Dziś",
+  "date.clear": "Wyczyść",
+  "date.placeholder": "dd.mm.rrrr",
+  "date.prevMonth": "Poprzedni miesiąc",
+  "date.nextMonth": "Następny miesiąc",
   "hint.semnaturi": "Imię (etykieta) + narysuj podpis na ekranie palcem.",
 
   "guide.title": "Szybki przewodnik",
