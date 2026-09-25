@@ -100,6 +100,8 @@ export interface FirmSettings {
   phone?: string;
   /** Pilot pack: default fișă type for new sheets. */
   defaultTip?: TipFisa;
+  /** Pilot pack: document language (contentLocale) for new sheets. */
+  defaultContentLocale?: ContentLocale;
   /** Pilot pack: technician names offered at login. */
   technicians?: string[];
   /** Pilot pack name/slug once imported (shown in Setări). */
@@ -191,4 +193,17 @@ export interface CatalogEquipment {
   clientName?: string;
   note?: string;
   updatedAt: string;
+}
+
+/**
+ * Document language for a NEW sheet: the firm's pilot-pack default when set,
+ * otherwise the current UI language (ro/en/pl), otherwise RO.
+ */
+export function newSheetContentLocale(
+  firm: { defaultContentLocale?: string | null } | null | undefined,
+  uiLocale: string | null | undefined
+): ContentLocale {
+  const f = firm?.defaultContentLocale;
+  if (f === "ro" || f === "en" || f === "pl") return f;
+  return uiLocale === "en" || uiLocale === "pl" ? uiLocale : "ro";
 }

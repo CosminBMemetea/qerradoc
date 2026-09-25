@@ -98,6 +98,12 @@ function softNormalizeSettings(raw: unknown): FirmSettings | null {
       (TIPURI as string[]).includes(raw.defaultTip)
         ? (raw.defaultTip as FirmSettings["defaultTip"])
         : undefined,
+    defaultContentLocale:
+      raw.defaultContentLocale === "ro" ||
+      raw.defaultContentLocale === "en" ||
+      raw.defaultContentLocale === "pl"
+        ? raw.defaultContentLocale
+        : undefined,
     technicians: Array.isArray(raw.technicians)
       ? raw.technicians.filter((x): x is string => typeof x === "string" && !!x.trim())
       : undefined,

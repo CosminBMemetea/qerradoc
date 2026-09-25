@@ -5,6 +5,7 @@ import {
   getCatalogClients,
   getCatalogEquipment,
   getSession,
+  getSettings,
   saveCatalogClients,
   saveCatalogEquipment,
   saveFisa,
@@ -39,9 +40,10 @@ export async function importExcelAsDraft(file: File): Promise<ExcelDraftResult> 
   }
   if (!parsed.ok) return { ok: false, error: parsed.error };
 
-  const session = await getSession();
+  const [session, firm] = await Promise.all([getSession(), getSettings().catch(() => null)]);
   const fisa = buildRoDraftFisa(parsed.fields, {
     technicianName: session?.technicianName,
+    defaultTip: firm?.defaultTip,
   });
   await saveFisa(fisa);
 

@@ -685,11 +685,12 @@ export function nextFisaNumber(now = new Date()): string {
  */
 export function buildRoDraftFisa(
   f: RoFisaDraftFields,
-  opts: { technicianName?: string; now?: Date } = {}
+  opts: { technicianName?: string; now?: Date; defaultTip?: TipFisa } = {}
 ): Fisa {
   const now = opts.now ?? new Date();
   return emptyFisa({
-    ...(f.tip ? { tip: f.tip } : {}),
+    // Marked type → firm default (pilot pack) → Reparație.
+    tip: f.tip || opts.defaultTip || "Reparație",
     nrFisa: f.nrFisa || nextFisaNumber(now),
     proprietar: f.proprietar,
     client: f.client,

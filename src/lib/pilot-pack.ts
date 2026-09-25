@@ -111,6 +111,7 @@ export function buildPilotPack(input: {
       phone: input.phone?.trim() || undefined,
       logoDataUrl: input.logoDataUrl,
       defaultTip: tip,
+      defaultContentLocale: input.contentLocale,
       technicians,
       packName: name,
     },
@@ -139,7 +140,7 @@ export function validatePilotPack(raw: unknown): PackValidation {
   const technicians = cleanTechs(
     Array.isArray(defaults.technicians) ? defaults.technicians : s.technicians
   );
-  const loc = optStr(defaults.contentLocale);
+  const loc = optStr(defaults.contentLocale) ?? optStr(s.defaultContentLocale);
   const contentLocale = loc === "ro" || loc === "en" || loc === "pl" ? loc : undefined;
   const logo = optStr(s.logoDataUrl);
   const name = optStr(meta.name) ?? String(s.companyName).trim();
@@ -189,6 +190,7 @@ export function validatePilotPack(raw: unknown): PackValidation {
         // Only accept image data URLs for the logo.
         logoDataUrl: logo && /^data:image\/(png|jpe?g|webp);base64,/i.test(logo) ? logo : undefined,
         defaultTip: tip,
+        defaultContentLocale: contentLocale,
         technicians,
         packName: name,
       },
@@ -233,6 +235,7 @@ export function planPackMerge(
     phone: ps.phone || cs.phone,
     logoDataUrl: ps.logoDataUrl || cs.logoDataUrl,
     defaultTip: ps.defaultTip || cs.defaultTip,
+    defaultContentLocale: ps.defaultContentLocale || pack.pack.defaults?.contentLocale || cs.defaultContentLocale,
     technicians: techs,
     packName: pack.pack.name,
   };

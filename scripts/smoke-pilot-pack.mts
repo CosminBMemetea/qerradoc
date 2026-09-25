@@ -84,4 +84,31 @@ if (b.ok) {
   assert.equal(b.data.settings.packName, "CleanTech Service SRL");
   assert.deepEqual(b.data.settings.technicians, plan.settings.technicians);
 }
+// Item 5: pack contentLocale = default document language for new sheets.
+{
+  const { newSheetContentLocale } = await import("../src/lib/types.ts");
+  const { buildRoDraftFisa } = await import("../src/lib/ro-fisa-draft.ts");
+  const withLoc = (loc: string) => validatePilotPack({ ...raw, pack: { ...raw.pack, defaults: { ...(raw.pack.defaults || {}), contentLocale: loc } } });
+  const pl = withLoc("pl");
+  assert.ok(pl.ok);
+  if (pl.ok) {
+    assert.equal(pl.data.settings.defaultContentLocale, "pl");
+    const merged = planPackMerge(pl.data, { settings: { companyName: "", cui: "" }, clients: [], equipment: [] });
+    assert.equal(merged.settings.defaultContentLocale, "pl", "merge stores the pack document language");
+    assert.equal(newSheetContentLocale(merged.settings, "ro"), "pl", "pack wins over UI language");
+    // survives a backup round-trip
+    const rb = validateBackup(JSON.parse(JSON.stringify({ version: BACKUP_VERSION, exportedAt: new Date().toISOString(), fise: [], settings: merged.settings })));
+    assert.ok(rb.ok && rb.data.settings?.defaultContentLocale === "pl");
+  }
+  const bad = withLoc("de");
+  assert.ok(bad.ok && bad.data.settings.defaultContentLocale === undefined, "unknown locale ignored");
+  assert.equal(newSheetContentLocale({}, "en"), "en", "no pack default → UI language");
+  assert.equal(newSheetContentLocale(undefined, "de"), "ro");
+  // Excel draft import: no marked type → firm default → Reparație.
+  const fields = { nrFisa: "", proprietar: "", client: "X", locatie: "", modelUtilaj: "", serie: "", oreFunctionare: "", manoperaOre: "", deplasareKm: "", deplasareDaNu: "", reclamatie: "", piese: [], dataAnuntarii: "", dataInterventiei: "", observatii: "", motiveInlocuire: "", semnaturaClient: "", semnaturaTehnician: "" } as unknown as Parameters<typeof buildRoDraftFisa>[0];
+  assert.equal(buildRoDraftFisa(fields, { defaultTip: "Revizie" }).tip, "Revizie");
+  assert.equal(buildRoDraftFisa(fields).tip, "Reparație");
+  assert.equal(buildRoDraftFisa({ ...fields, tip: "Constatare" }, { defaultTip: "Revizie" }).tip, "Constatare", "marked type wins");
+}
+
 console.log("smoke-pilot-pack: OK");
