@@ -14,6 +14,7 @@ import type { Fisa, FirmSettings, TemplateKind } from "@/lib/types";
 import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { techExample } from "@/lib/defaults";
+import { docDate } from "@/lib/date-format";
 
 export default function FiseListPage() {
   const { t, locale } = useI18n();
@@ -166,7 +167,7 @@ export default function FiseListPage() {
                     </div>
                   </div>
                   <div className="text-xs text-stone-400 dark:text-stone-500 whitespace-nowrap pt-0.5">
-                    {f.dataInterventiei || f.updatedAt.slice(0, 10)}
+                    {docDate(f.dataInterventiei || f.updatedAt.slice(0, 10), locale)}
                   </div>
                 </div>
               </Link>

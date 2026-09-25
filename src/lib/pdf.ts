@@ -11,6 +11,7 @@ import {
   type CurrencyCode,
 } from "./currency";
 import { ensurePdfCompatibleImage } from "./logo";
+import { docDate, docStamp } from "./date-format";
 
 export type PdfLocale = "ro" | "en" | "pl";
 
@@ -645,7 +646,7 @@ export async function generateFisaPdf(
     col3,
     blockH,
     L.dataAnuntarii,
-    fisa.dataAnuntarii || ""
+    docDate(fisa.dataAnuntarii, loc)
   );
   const clientBoxX = margin + col3 + gap;
   const techBoxX = margin + 2 * (col3 + gap);
@@ -682,7 +683,7 @@ export async function generateFisaPdf(
     contentW * 0.4,
     10,
     L.dataInterventiei,
-    fisa.dataInterventiei || ""
+    docDate(fisa.dataInterventiei, loc)
   );
   y += 12.5;
 
@@ -771,9 +772,7 @@ export async function generateFisaPdf(
     doc.setFont(pdfFont(), "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(120);
-    const stamp = new Date().toLocaleString(
-      loc === "en" ? "en-GB" : loc === "pl" ? "pl-PL" : "ro-RO"
-    );
+    const stamp = docStamp(new Date(), loc);
     doc.text(
       `${(L.footer)} · ${stamp}`,
       pageW / 2,
