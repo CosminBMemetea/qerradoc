@@ -16,6 +16,7 @@ import {
   buildExtractMessages,
   extractionToFisa,
   matchCatalog,
+  numbersInText,
   numStr,
   validateExtraction,
   type ExtractResponse,
@@ -141,6 +142,48 @@ function mocked() {
   const pl = validateExtraction({ client: "Hotel Marriott Warszawa", locatie: "Warszawa", modelUtilaj: "Tennant T300", serie: "TN-112233", oreFunctionare: "", tip: "Reparație", reclamatie: "Nie zbiera wody", observatii: "Wymieniłem szczotkę walcową i gumy ssawy", manoperaOre: "2", deplasareKm: "18", piese: [{ denumire: "Szczotka walcowa", cod: "", cantitate: "1", pret: "" }] }, SENTENCES.pl)!;
   assert.equal(pl.locatie, "Warszawa");
   assert.equal(pl.reclamatie, "Nie zbiera wody");
+  // 3d: numbers must be traceable (digits or ro/en/pl number words).
+  const has = (t: string, n: number) => numbersInText(t).has(n);
+  assert.ok(has(SENTENCES.ro, 2) && has(SENTENCES.ro, 35), "două / 35");
+  assert.ok(has(SENTENCES.en, 1.5) && has(SENTENCES.en, 22), "one and a half");
+  assert.ok(has(SENTENCES.pl, 2) && has(SENTENCES.pl, 18), "dwie");
+  assert.ok(has("o oră și jumătate", 1.5));
+  assert.ok(has("półtorej godziny", 1.5));
+  assert.ok(has("douăzeci și cinci de km", 25));
+  assert.ok(has("twenty five km", 25));
+  assert.ok(has("dwadzieścia pięć km", 25));
+  assert.ok(has("1,5 ore", 1.5));
+  assert.ok(!has(SENTENCES.ro, 3));
+  const blank = { client: "", locatie: "", modelUtilaj: "", serie: "", oreFunctionare: "", tip: "", reclamatie: "", observatii: "", manoperaOre: "", deplasareKm: "", piese: [] };
+  const inv = validateExtraction(
+    { ...blank, oreFunctionare: "1200", manoperaOre: "3", deplasareKm: "40",
+      reclamatie: "Motor ars, zgomot puternic",
+      piese: [
+        { denumire: "Perie cilindrică", cod: "", cantitate: "4", pret: "250" },
+        { denumire: "Motor ventilator", cod: "", cantitate: "1", pret: "" },
+      ] },
+    SENTENCES.ro
+  )!;
+  assert.equal(inv.oreFunctionare, "", "invented hour meter dropped");
+  assert.equal(inv.manoperaOre, "", "invented labour dropped");
+  assert.equal(inv.deplasareKm, "", "invented km dropped");
+  assert.equal(inv.reclamatie, "", "complaint unrelated to the text dropped");
+  assert.equal(inv.piese.length, 1, "part not mentioned in the text dropped");
+  assert.equal(inv.piese[0].cantitate, "1", "untraceable qty → 1 piece");
+  assert.equal(inv.piese[0].pret, "", "untraceable price dropped");
+  const ok2 = validateExtraction(
+    { ...blank, manoperaOre: "1.5", deplasareKm: "22", reclamatie: "Not picking up water",
+      piese: [{ denumire: "Squeegee blade", cod: "", cantitate: "2", pret: "" }] },
+    "Not picking up water, replaced two squeegee blades, one and a half hours, 22 km"
+  )!;
+  assert.equal(ok2.manoperaOre, "1.5");
+  assert.equal(ok2.deplasareKm, "22");
+  assert.equal(ok2.piese[0].cantitate, "2", "two → 2");
+  assert.equal(ok2.reclamatie, "Not picking up water");
+  const pl2 = validateExtraction({ ...blank, piese: [{ denumire: "Szczotka walcowa", cod: "", cantitate: "1", pret: "120" }] }, "wymieniłem szczotkę walcową za 120 zł")!;
+  assert.equal(pl2.piese[0].denumire, "Szczotka walcowa", "inflected PL name matches");
+  assert.equal(pl2.piese[0].pret, "120");
+
   console.log("smoke-voice-extract: mocked OK");
 }
 

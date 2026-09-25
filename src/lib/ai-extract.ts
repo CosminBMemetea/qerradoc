@@ -217,6 +217,99 @@ function fuzzyContains(srcNorm: string, name: string): boolean {
   return toks.filter((t) => srcNorm.includes(t)).length / toks.length >= 0.5;
 }
 
+// ---------------------------------------------------------------------------
+// Number traceability (digits or ro/en/pl number words)
+// ---------------------------------------------------------------------------
+
+const UNITS: Record<string, number> = {
+  // ro (diacritics stripped by norm)
+  zero: 0, unu: 1, una: 1, un: 1, o: 1, doi: 2, doua: 2, trei: 3, patru: 4, cinci: 5,
+  sase: 6, sapte: 7, opt: 8, noua: 9, zece: 10, unsprezece: 11, doisprezece: 12,
+  douasprezece: 12, treisprezece: 13, paisprezece: 14, cincisprezece: 15,
+  saisprezece: 16, saptesprezece: 17, optsprezece: 18, nouasprezece: 19,
+  // en
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
+  fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+  // pl
+  jeden: 1, jedna: 1, jedno: 1, jednej: 1, godzine: 1, dwa: 2, dwie: 2, dwoch: 2,
+  trzy: 3, cztery: 4, piec: 5, szesc: 6, siedem: 7, osiem: 8, dziewiec: 9,
+  dziesiec: 10, jedenascie: 11, dwanascie: 12, trzynascie: 13, czternascie: 14,
+  pietnascie: 15, szesnascie: 16, siedemnascie: 17, osiemnascie: 18, dziewietnascie: 19,
+};
+const TENS: Record<string, number> = {
+  douazeci: 20, treizeci: 30, patruzeci: 40, cincizeci: 50, saizeci: 60,
+  saptezeci: 70, optzeci: 80, nouazeci: 90, suta: 100,
+  twenty: 20, thirty: 30, forty: 40, fifty: 50, sixty: 60, seventy: 70,
+  eighty: 80, ninety: 90, hundred: 100,
+  dwadziescia: 20, trzydziesci: 30, czterdziesci: 40, piecdziesiat: 50,
+  szescdziesiat: 60, siedemdziesiat: 70, osiemdziesiat: 80, dziewiecdziesiat: 90, sto: 100,
+};
+const HALF = new Set(["jumatate", "half", "pol"]);
+const ONE_AND_HALF = new Set(["poltora", "poltorej"]);
+const JOIN = new Set(["si", "and", "i"]);
+
+/** Every number the text states, as digits or number words (ro/en/pl). */
+export function numbersInText(text: string): Set<number> {
+  const out = new Set<number>();
+  const digitSrc = (text || "").replace(/(\d),(\d)/g, "$1.$2");
+  (digitSrc.match(/\d+(?:\.\d+)?/g) || []).forEach((d) => out.add(Number(d)));
+  const toks = norm(text).split(" ");
+  for (let i = 0; i < toks.length; i++) {
+    const w = toks[i];
+    if (ONE_AND_HALF.has(w)) out.add(1.5);
+    if (HALF.has(w)) out.add(0.5);
+    let v: number | undefined;
+    let j = i;
+    if (TENS[w] !== undefined) {
+      v = TENS[w];
+      // "douăzeci și cinci", "twenty five", "dwadzieścia pięć"
+      let k = i + 1;
+      if (JOIN.has(toks[k])) k++;
+      if (UNITS[toks[k]] !== undefined && UNITS[toks[k]] < 10) {
+        out.add(v);
+        v += UNITS[toks[k]];
+        j = k;
+      }
+    } else if (UNITS[w] !== undefined) {
+      v = UNITS[w];
+    } else if (/^\d+(\.\d+)?$/.test(w)) {
+      v = Number(w);
+    }
+    if (v === undefined) continue;
+    out.add(v);
+    // "... și jumătate" / "... and a half" / "... i pół" within 4 tokens
+    for (let k = j + 1; k <= j + 4 && k < toks.length; k++) {
+      if (HALF.has(toks[k])) {
+        out.add(v + 0.5);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+function traceableNumber(value: string, nums: Set<number>): string {
+  if (!value) return "";
+  const n = Number(value);
+  return Array.from(nums).some((x) => Math.abs(x - n) < 1e-9) ? value : "";
+}
+
+/** Meaningful words of a value must appear (as a stem) in the source text. */
+function sharesWords(value: string, source: string): boolean {
+  if (!value) return true;
+  const srcToks = norm(source).split(" ").filter(Boolean);
+  const toks = norm(value).split(" ").filter((t) => t.length >= 4);
+  if (!toks.length) {
+    const short = norm(value).split(" ").filter(Boolean);
+    return short.every((t) => srcToks.includes(t));
+  }
+  return toks.some((t) => {
+    const stem = t.slice(0, Math.max(4, Math.min(6, t.length - 2)));
+    return srcToks.some((s) => s.startsWith(stem));
+  });
+}
+
 /**
  * Validate raw LLM JSON → Extraction. Unknown/invalid values become "".
  * Returns null only when the payload is not an object at all.
@@ -237,20 +330,25 @@ export function validateExtraction(
   // Serial must literally occur in the text (ignoring spaces/dashes/case).
   if (serie && !compact(sourceText).includes(compact(serie))) serie = "";
 
+  const nums = numbersInText(sourceText);
   const piese: ExtractedPart[] = [];
   if (Array.isArray(r.piese)) {
     for (const p of r.piese.slice(0, 15)) {
       if (!p || typeof p !== "object") continue;
       const o = p as Record<string, unknown>;
       const denumire = str(o.denumire, 120);
-      if (!denumire) continue;
+      if (!denumire || !sharesWords(denumire, sourceText)) continue;
       let cod = str(o.cod, 60);
       if (cod && !compact(sourceText).includes(compact(cod))) cod = "";
       piese.push({
         denumire,
         cod,
-        cantitate: numStr(o.cantitate) || "1",
-        pret: numStr(o.pret),
+        // A part named without a count is one piece; any other count must be stated.
+        cantitate: (() => {
+          const q = numStr(o.cantitate);
+          return !q || q === "1" ? "1" : traceableNumber(q, nums) || "1";
+        })(),
+        pret: traceableNumber(numStr(o.pret), nums),
       });
     }
   }
@@ -263,12 +361,15 @@ export function validateExtraction(
     })(),
     modelUtilaj: grounded(modelUtilaj, sourceText, hints?.models) ? modelUtilaj : "",
     serie,
-    oreFunctionare: numStr(r.oreFunctionare),
+    oreFunctionare: traceableNumber(numStr(r.oreFunctionare), nums),
     tip,
-    reclamatie: str(r.reclamatie, 600),
+    reclamatie: (() => {
+      const rec = str(r.reclamatie, 600);
+      return sharesWords(rec, sourceText) ? rec : "";
+    })(),
     observatii: str(r.observatii, 1200),
-    manoperaOre: numStr(r.manoperaOre),
-    deplasareKm: numStr(r.deplasareKm),
+    manoperaOre: traceableNumber(numStr(r.manoperaOre), nums),
+    deplasareKm: traceableNumber(numStr(r.deplasareKm), nums),
     piese,
   };
 }
