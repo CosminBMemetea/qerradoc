@@ -10,7 +10,8 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import { useI18n, type Locale } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n";
+import { formatDateForLocale } from "@/lib/date-format";
 import { inputCls } from "./Field";
 
 /**
@@ -59,13 +60,7 @@ function addMonths(a: YMD, delta: number): YMD {
 const same = (a: YMD | null, b: YMD | null) =>
   !!a && !!b && a.y === b.y && a.m === b.m && a.d === b.d;
 
-/** Field display: ro/pl dd.mm.yyyy, en dd/mm/yyyy */
-export function formatDateForLocale(v: string, locale: Locale): string {
-  const p = parseIso(v);
-  if (!p) return "";
-  const sep = locale === "en" ? "/" : ".";
-  return `${pad(p.d)}${sep}${pad(p.m + 1)}${sep}${p.y}`;
-}
+export { formatDateForLocale };
 
 const cap = (s: string) => s.charAt(0).toLocaleUpperCase() + s.slice(1);
 

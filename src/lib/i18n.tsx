@@ -370,6 +370,16 @@ const ro: Dict = {
   "voice.filling": "Completez fișa…",
   "voice.bannerBasic": "Completare de bază, fără AI (offline sau indisponibil) — verifică atent.",
   "voice.legend": "Câmpurile evidențiate au fost completate din voce. Evidențierea dispare când le editezi.",
+  "send.button": "Trimite clientului",
+  "send.again": "Trimite din nou",
+  "send.hint": "PDF + mesaj pe WhatsApp sau e-mail",
+  "send.preparing": "Pregătesc PDF-ul…",
+  "send.done": "Fișa a fost trimisă.",
+  "send.fallback": "PDF descărcat și WhatsApp deschis — atașează PDF-ul în conversație.",
+  "send.error": "Nu am putut trimite. Încearcă din nou sau descarcă PDF-ul.",
+  "send.sentAt": "Trimisă {time}",
+  "send.badge": "Trimisă",
+  "send.signFirst": "După semnătura clientului apare butonul „Trimite clientului”.",
 };
 
 const en: Dict = {
@@ -703,6 +713,16 @@ const en: Dict = {
   "voice.filling": "Filling the sheet…",
   "voice.bannerBasic": "Basic fill without AI (offline or unavailable) — check carefully.",
   "voice.legend": "Highlighted fields were filled from your voice. The highlight goes away once you edit them.",
+  "send.button": "Send to client",
+  "send.again": "Send again",
+  "send.hint": "PDF + message via WhatsApp or e-mail",
+  "send.preparing": "Preparing the PDF…",
+  "send.done": "Sheet sent.",
+  "send.fallback": "PDF downloaded and WhatsApp opened — attach the PDF in the chat.",
+  "send.error": "Couldn't send. Try again or download the PDF.",
+  "send.sentAt": "Sent {time}",
+  "send.badge": "Sent",
+  "send.signFirst": "Once the client signs, the “Send to client” button appears.",
 };
 
 const pl: Dict = {
@@ -1038,6 +1058,16 @@ const pl: Dict = {
   "voice.filling": "Wypełniam kartę…",
   "voice.bannerBasic": "Podstawowe wypełnienie bez AI (offline lub niedostępne) — sprawdź dokładnie.",
   "voice.legend": "Wyróżnione pola zostały wypełnione z głosu. Wyróżnienie znika po ich edycji.",
+  "send.button": "Wyślij klientowi",
+  "send.again": "Wyślij ponownie",
+  "send.hint": "PDF + wiadomość przez WhatsApp lub e-mail",
+  "send.preparing": "Przygotowuję PDF…",
+  "send.done": "Karta wysłana.",
+  "send.fallback": "PDF pobrany i WhatsApp otwarty — załącz PDF w rozmowie.",
+  "send.error": "Nie udało się wysłać. Spróbuj ponownie lub pobierz PDF.",
+  "send.sentAt": "Wysłana {time}",
+  "send.badge": "Wysłana",
+  "send.signFirst": "Po podpisie klienta pojawi się przycisk „Wyślij klientowi”.",
 };
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };

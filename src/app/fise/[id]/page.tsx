@@ -5,6 +5,8 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import FisaForm from "@/components/FisaForm";
+import SendToClient from "@/components/SendToClient";
+import { canSendToClient } from "@/lib/send-to-client";
 import { getFisa, saveFisa, deleteFisa, upsertCatalogFromFisa } from "@/lib/db";
 import type { Fisa } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
@@ -40,9 +42,7 @@ function EditInner() {
     };
   }, [id]);
 
-  async function onSave() {
-    if (!fisa) return;
-    const next = { ...fisa, reviewed: true };
+  async function persist(next: Fisa): Promise<Fisa> {
     await saveFisa(next);
     try {
       await upsertCatalogFromFisa(next);
@@ -50,6 +50,12 @@ function EditInner() {
       /* catalog learn is best-effort */
     }
     setFisa(next);
+    return next;
+  }
+
+  async function onSave() {
+    if (!fisa) return;
+    await persist({ ...fisa, reviewed: true });
     setSaved(true);
   }
 
@@ -122,19 +128,32 @@ function EditInner() {
       )}
       <FisaForm fisa={fisa} onChange={setFisa} />
 
-      <div className="sticky bottom-0 mt-6 space-y-3 bg-background/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1">
+      <div className="sticky bottom-0 z-10 mt-6 bg-background/95 backdrop-blur-sm pt-3 pb-3 -mx-1 px-1">
+        {canSendToClient(fisa) ? (
+          <SendToClient fisa={fisa} persist={persist} />
+        ) : (
+          <BigButton onClick={onSave} variant="success">
+            {t("edit.save")}
+          </BigButton>
+        )}
         {saved && (
-          <p className="text-center text-teal-800 dark:text-teal-300 font-medium text-sm">
+          <p className="mt-2 text-center text-teal-800 dark:text-teal-300 font-medium text-sm">
             {t("edit.saved")}
           </p>
         )}
-        <BigButton onClick={onSave} variant="success">
-          {t("edit.save")}
-        </BigButton>
+      </div>
+      <div className="mt-3 space-y-3">
+        {canSendToClient(fisa) ? (
+          <BigButton onClick={onSave} variant="success">
+            {t("edit.save")}
+          </BigButton>
+        ) : (
+          <p className="text-xs text-muted text-center">{t("send.signFirst")}</p>
+        )}
         <BigButton
           href={`/fise/${fisa.id}/pdf`}
           disabled={!fisa.reviewed && mustReview}
-          variant="primary"
+          variant="secondary"
         >
           {t("edit.pdf")}
         </BigButton>

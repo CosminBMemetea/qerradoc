@@ -14,7 +14,8 @@
     "smoke:currency": "npx --yes tsx scripts/smoke-currency.ts",
     "test:ro-fisa-import": "npx --yes tsx scripts/test-ro-fisa-import.mts",
     "test:ro-fisa-draft": "npx --yes tsx scripts/test-ro-fisa-draft.mts",
-    "smoke:voice": "npx --yes tsx scripts/smoke-voice-extract.mts"
+    "smoke:voice": "npx --yes tsx scripts/smoke-voice-extract.mts",
+    "smoke:send": "npx --yes tsx scripts/smoke-send.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

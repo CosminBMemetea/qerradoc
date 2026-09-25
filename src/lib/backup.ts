@@ -73,6 +73,11 @@ function softNormalizeFisa(raw: unknown): Fisa | null {
     audioNoteDataUrl: optStr(raw.audioNoteDataUrl),
     semnaturaClientDataUrl: optStr(raw.semnaturaClientDataUrl),
     semnaturaTehnicianDataUrl: optStr(raw.semnaturaTehnicianDataUrl),
+    // Sent-to-client timestamp and voice-filled highlight keys survive restore.
+    sentAt: optStr(raw.sentAt),
+    aiFilled: Array.isArray(raw.aiFilled)
+      ? raw.aiFilled.filter((k): k is string => typeof k === "string")
+      : undefined,
   };
 }
 

@@ -124,6 +124,15 @@ export default function FiseListPage() {
                           {t(`fise.badge.${f.templateKind}`)}
                         </span>
                       )}
+                      {f.sentAt && (
+                        <span
+                          data-testid="sent-badge"
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border border-teal-200/80 dark:border-teal-800/60"
+                        >
+                          <span aria-hidden="true">✓</span>
+                          {t("send.badge")}
+                        </span>
+                      )}
                       <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 dark:bg-stone-800 dark:text-stone-300 border border-stone-200/80 dark:border-stone-700">
                         {resolveContentLocale(f).toUpperCase()}
                       </span>
