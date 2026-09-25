@@ -368,7 +368,7 @@ const ro: Dict = {
   "menu.backup": "Backup și restaurare",
   "menu.close": "Închide",
   "voice.filling": "Completez fișa…",
-  "voice.bannerBasic": "Completare de bază, fără AI (offline sau indisponibil) — verifică atent.",
+  "voice.bannerBasic": "Completare simplă, verifică câmpurile",
   "voice.legend": "Câmpurile evidențiate au fost completate din voce. Evidențierea dispare când le editezi.",
   "send.button": "Trimite clientului",
   "send.again": "Trimite din nou",
@@ -387,6 +387,13 @@ const ro: Dict = {
   "pack.done": "Pachetul „{name}” a fost încărcat: {clients} clienți și {equipment} utilaje noi.",
   "pack.err": "Fișierul nu este un pachet Querra valid.",
   "pack.loaded": "Pachet de configurare: {name}",
+  "voice.why.offline": "Fără conexiune: fișa a fost salvată pe telefon, completată fără AI.",
+  "voice.why.busy": "Serviciul AI este ocupat acum (limită de cereri), am completat fără AI.",
+  "voice.why.timeout": "Serviciul AI a răspuns prea greu, am completat fără AI.",
+  "voice.why.empty": "AI nu a găsit câmpuri în text, am completat fără AI.",
+  "voice.why.unavailable": "Serviciul AI nu este disponibil acum, am completat fără AI.",
+  "send.blocked": "PDF descărcat. Browserul a blocat fereastra WhatsApp — apasă linkul de mai jos.",
+  "send.openWhatsApp": "Deschide WhatsApp",
 };
 
 const en: Dict = {
@@ -718,7 +725,7 @@ const en: Dict = {
   "menu.backup": "Backup & restore",
   "menu.close": "Close",
   "voice.filling": "Filling the sheet…",
-  "voice.bannerBasic": "Basic fill without AI (offline or unavailable) — check carefully.",
+  "voice.bannerBasic": "Simple fill, please check the fields",
   "voice.legend": "Highlighted fields were filled from your voice. The highlight goes away once you edit them.",
   "send.button": "Send to client",
   "send.again": "Send again",
@@ -737,6 +744,13 @@ const en: Dict = {
   "pack.done": "Pack “{name}” loaded: {clients} new clients and {equipment} new machines.",
   "pack.err": "This file is not a valid Querra pack.",
   "pack.loaded": "Setup pack: {name}",
+  "voice.why.offline": "No connection: the sheet was saved on this phone and filled without AI.",
+  "voice.why.busy": "The AI service is busy right now (rate limit), so it was filled without AI.",
+  "voice.why.timeout": "The AI service took too long, so it was filled without AI.",
+  "voice.why.empty": "AI found no fields in the text, so it was filled without AI.",
+  "voice.why.unavailable": "The AI service is unavailable right now, so it was filled without AI.",
+  "send.blocked": "PDF downloaded. The browser blocked the WhatsApp window — tap the link below.",
+  "send.openWhatsApp": "Open WhatsApp",
 };
 
 const pl: Dict = {
@@ -1070,7 +1084,7 @@ const pl: Dict = {
   "menu.backup": "Kopia zapasowa i przywracanie",
   "menu.close": "Zamknij",
   "voice.filling": "Wypełniam kartę…",
-  "voice.bannerBasic": "Podstawowe wypełnienie bez AI (offline lub niedostępne) — sprawdź dokładnie.",
+  "voice.bannerBasic": "Proste wypełnienie, sprawdź pola",
   "voice.legend": "Wyróżnione pola zostały wypełnione z głosu. Wyróżnienie znika po ich edycji.",
   "send.button": "Wyślij klientowi",
   "send.again": "Wyślij ponownie",
@@ -1089,6 +1103,13 @@ const pl: Dict = {
   "pack.done": "Pakiet „{name}” wczytany: {clients} nowych klientów i {equipment} nowych maszyn.",
   "pack.err": "Ten plik nie jest prawidłowym pakietem Querra.",
   "pack.loaded": "Pakiet konfiguracyjny: {name}",
+  "voice.why.offline": "Brak połączenia: protokół zapisano w telefonie i wypełniono bez AI.",
+  "voice.why.busy": "Usługa AI jest teraz przeciążona (limit zapytań), wypełniono bez AI.",
+  "voice.why.timeout": "Usługa AI odpowiadała zbyt długo, wypełniono bez AI.",
+  "voice.why.empty": "AI nie znalazło pól w tekście, wypełniono bez AI.",
+  "voice.why.unavailable": "Usługa AI jest teraz niedostępna, wypełniono bez AI.",
+  "send.blocked": "PDF pobrany. Przeglądarka zablokowała okno WhatsApp — dotknij linku poniżej.",
+  "send.openWhatsApp": "Otwórz WhatsApp",
 };
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };

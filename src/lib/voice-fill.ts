@@ -15,9 +15,15 @@ export type VoiceFillResult = {
   patch: Partial<Fisa>;
   filled: string[];
   source: "llm" | "heuristic";
+  /**
+   * Why the heuristic was used (shown to the user):
+   * offline | timeout | empty | missing_key | rate_limited | http_502 | invalid_output | …
+   */
+  reason?: string;
 };
 
-const CLIENT_TIMEOUT_MS = 18_000;
+/** Server chain (retry + smaller model) finishes within ~19 s. */
+const CLIENT_TIMEOUT_MS = 22_000;
 
 /** Keys the heuristic parser actually filled (for highlighting). */
 function heuristicFilled(p: Partial<Fisa>): string[] {
@@ -40,6 +46,7 @@ export async function voiceFill(
   locale: ContentLocale
 ): Promise<VoiceFillResult> {
   const trimmed = text.trim();
+  let reason: string | undefined;
   const [clients, equipment] = await Promise.all([
     getCatalogClients().catch(() => []),
     getCatalogEquipment().catch(() => []),
@@ -64,12 +71,19 @@ export async function voiceFill(
         const { patch, filled } = extractionToFisa(matched);
         return { patch, filled, source: "llm" };
       }
-    } catch {
-      /* offline / timeout → heuristic */
+      reason = json
+        ? json.ok
+          ? "empty"
+          : json.reason || json.error
+        : `http_${res.status}`;
+    } catch (e) {
+      // Aborted by our timer → timeout; anything else is a network failure (offline).
+      reason = ctrl.signal.aborted || (e instanceof Error && e.name === "AbortError") ? "timeout" : "offline";
     } finally {
       clearTimeout(timer);
     }
   }
   const patch = parseWhatsAppText(trimmed);
-  return { patch, filled: heuristicFilled(patch), source: "heuristic" };
+  if (!reason && typeof navigator !== "undefined" && navigator.onLine === false) reason = "offline";
+  return { patch, filled: heuristicFilled(patch), source: "heuristic", reason };
 }

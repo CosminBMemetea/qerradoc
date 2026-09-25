@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
-import { emptyFisa } from "@/lib/types";
-import { demoFillFromPhoto } from "@/lib/parse-text";
+import { emptyFisa, newSheetContentLocale, type Fisa } from "@/lib/types";
+import { demoFillFromPhoto, resolveNewSheetTip } from "@/lib/parse-text";
 import { saveFisa, getSession, getSettings } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 
@@ -60,15 +60,17 @@ export default function NewFromPhotoPage() {
     try {
       const [session, firm] = await Promise.all([getSession(), getSettings()]);
       const year = new Date().getFullYear();
-      let partial = {};
+      // Pilot-pack document language wins over the UI language.
+      const contentLocale = newSheetContentLocale(firm, locale);
+      let partial: Partial<Fisa> = {};
       if (mode === "model" || mode === "ocr") {
-        partial = demoFillFromPhoto(filename, locale);
+        partial = demoFillFromPhoto(filename, contentLocale);
       }
-      const contentLocale =
-        locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
+      // Type: firm default unless the file name explicitly names the type.
+      const tip = resolveNewSheetTip(filename, firm.defaultTip, partial.tip);
       const fisa = emptyFisa({
-        ...(firm.defaultTip ? { tip: firm.defaultTip } : {}),
         ...partial,
+        ...(tip ? { tip } : {}),
         photoDataUrl: preview || undefined,
         nrFisa: `${year}-${String(Date.now()).slice(-4)}`,
         semnaturaTehnician: session?.technicianName || "",
@@ -82,6 +84,11 @@ export default function NewFromPhotoPage() {
               : "",
       });
       await saveFisa(fisa);
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        // Offline: open the precached static editor route (see next.config.mjs).
+        window.location.assign(`/fise/edit?id=${encodeURIComponent(fisa.id)}&review=1`);
+        return;
+      }
       router.push(`/fise/${fisa.id}?review=1`);
     } finally {
       setBusy(false);

@@ -23,11 +23,8 @@ import {
 } from "../src/lib/ai-extract.ts";
 import type { CatalogClient, CatalogEquipment, ContentLocale } from "../src/lib/types.ts";
 
-export const SENTENCES: Record<ContentLocale, string> = {
-  ro: "Hotel Continental, Nilfisk SC500 seria SN-998877, nu aspiră apa, am schimbat peria cilindrică și racleta, două ore manoperă, 35 km",
-  en: "Grand Hotel Leeds, Kärcher B 40 serial KB-445566, not picking up water, replaced the squeegee blade and the vacuum hose, one and a half hours labour, 22 km",
-  pl: "Hotel Marriott Warszawa, Tennant T300 numer seryjny TN-112233, nie zbiera wody, wymieniłem szczotkę walcową i gumy ssawy, dwie godziny robocizny, 18 km",
-};
+import { SENTENCES } from "./voice-sentences.mts";
+export { SENTENCES };
 
 const EXPECT: Record<ContentLocale, { client: RegExp; model: RegExp; serie: string; man: string; km: string; parts: number; reclamatie: RegExp }> = {
   ro: { client: /continental/i, model: /sc\s?500/i, serie: "SN-998877", man: "2", km: "35", parts: 2, reclamatie: /aspir/i },
@@ -264,3 +261,60 @@ async function live() {
 mocked();
 catalogTies();
 await live();
+
+// ── 3b: Groq resilience chain (retry once honouring Retry-After, then smaller model) ──
+{
+  const { groqExtract, parseRetryAfter, PRIMARY_MODEL, FALLBACK_MODEL, RETRY_CAP_MS } = await import("../src/lib/groq-extract.ts");
+  const good = { client: "Hotel Continental", locatie: "", modelUtilaj: "Nilfisk SC500", serie: "SN-998877", oreFunctionare: "", tip: "", reclamatie: "Nu aspiră apa", observatii: "", manoperaOre: "2", deplasareKm: "35", piese: [] };
+  const okRes = () => new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(good) } }] }), { status: 200 });
+  const err = (status: number, headers: Record<string, string> = {}) => new Response("upstream says no", { status, headers });
+  const run = async (script: ((model: string) => Response | Promise<Response>)[]) => {
+    const calls: string[] = [];
+    const sleeps: number[] = [];
+    let i = 0;
+    const r = await groqExtract(
+      { text: SENTENCES.ro, locale: "ro", hints: { clients: [], models: [] } },
+      { url: "http://mock/chat", apiKey: "k" },
+      {
+        fetch: (async (_u: unknown, init?: RequestInit) => {
+          const model = JSON.parse(String(init?.body)).model;
+          calls.push(model);
+          return script[Math.min(i++, script.length - 1)](model);
+        }) as typeof fetch,
+        sleep: async (ms: number) => { sleeps.push(ms); },
+        log: () => {},
+      }
+    );
+    return { r, calls, sleeps };
+  };
+  assert.equal(parseRetryAfter("1"), 1000);
+  assert.equal(parseRetryAfter("0.5"), 500);
+  assert.equal(parseRetryAfter(null), null);
+
+  let x = await run([() => okRes()]);
+  assert.ok(x.r.ok && x.r.model === PRIMARY_MODEL && x.calls.length === 1);
+
+  x = await run([() => err(429, { "retry-after": "1" }), () => okRes()]);
+  assert.ok(x.r.ok && x.r.model === PRIMARY_MODEL, "429 → retry primary");
+  assert.deepEqual(x.sleeps, [1000], "honours Retry-After");
+
+  x = await run([() => err(429, { "retry-after": "30" }), () => err(429), () => okRes()]);
+  assert.deepEqual(x.sleeps, [RETRY_CAP_MS], "Retry-After capped");
+  assert.deepEqual(x.calls, [PRIMARY_MODEL, PRIMARY_MODEL, FALLBACK_MODEL]);
+  assert.ok(x.r.ok && x.r.model === FALLBACK_MODEL, "then smaller model");
+
+  x = await run([() => err(502), () => err(502), () => err(502)]);
+  assert.ok(!x.r.ok && x.r.reason === "http_502" && x.r.status === 502, "real reason returned");
+  assert.equal(x.calls.length, 3);
+  if (!x.r.ok) assert.deepEqual(x.r.attempts, [`${PRIMARY_MODEL}:http_502`, `${PRIMARY_MODEL}:http_502`, `${FALLBACK_MODEL}:http_502`]);
+
+  x = await run([() => err(401)]);
+  assert.ok(!x.r.ok && x.r.reason === "auth" && x.calls.length === 1, "auth: no retry / no fallback model");
+
+  x = await run([() => new Response(JSON.stringify({ choices: [{ message: { content: "not json" } }] })), () => okRes()]);
+  assert.ok(x.r.ok && x.r.model === FALLBACK_MODEL && x.sleeps.length === 0, "invalid output → smaller model, no retry");
+
+  x = await run([() => { throw new TypeError("fetch failed"); }, () => okRes()]);
+  assert.ok(x.r.ok && x.r.model === PRIMARY_MODEL, "network error → one retry");
+  console.log("smoke-voice-extract: groq retry/fallback chain OK");
+}

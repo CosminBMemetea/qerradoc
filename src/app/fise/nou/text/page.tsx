@@ -6,8 +6,8 @@ import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import DictateButton from "@/components/DictateButton";
 import { Field, textareaCls } from "@/components/Field";
-import { emptyFisa } from "@/lib/types";
-import { sampleWhatsApp } from "@/lib/parse-text";
+import { emptyFisa, newSheetContentLocale } from "@/lib/types";
+import { resolveNewSheetTip, sampleWhatsApp } from "@/lib/parse-text";
 import { voiceFill } from "@/lib/voice-fill";
 import type { Fisa } from "@/lib/types";
 import { saveFisa, getSession, getSettings } from "@/lib/db";
@@ -38,27 +38,37 @@ function TextInner() {
     try {
       const [session, firm] = await Promise.all([getSession(), getSettings()]);
       const year = new Date().getFullYear();
-      const contentLocale =
-        locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
-      const filled = parse
+      // Pilot-pack document language wins over the UI language.
+      const contentLocale = newSheetContentLocale(firm, locale);
+      const filled: { patch: Partial<Fisa>; filled: string[]; source: "llm" | "heuristic"; reason?: string } = parse
         ? await voiceFill(text, contentLocale)
-        : { patch: { reclamatie: text } as Partial<Fisa>, filled: [], source: "heuristic" as const };
+        : { patch: { reclamatie: text }, filled: [], source: "heuristic" };
       const parsed = filled.patch;
+      // Type: the firm default wins unless the text explicitly names the type.
+      const tip = resolveNewSheetTip(text, firm.defaultTip, parsed.tip);
+      const aiFilled = filled.filled.filter((k) => k !== "tip" || tip === parsed.tip);
       const fisa = emptyFisa({
-        ...(firm.defaultTip ? { tip: firm.defaultTip } : {}),
         ...parsed,
+        ...(tip ? { tip } : {}),
         nrFisa: parsed.nrFisa || `${year}-${String(Date.now()).slice(-4)}`,
         semnaturaTehnician:
           parsed.semnaturaTehnician || session?.technicianName || "",
         reviewed: false,
         audioNoteDataUrl,
         contentLocale,
-        aiFilled: filled.filled.length ? filled.filled : undefined,
+        aiFilled: aiFilled.length ? aiFilled : undefined,
       });
       await saveFisa(fisa);
-      router.push(
-        `/fise/${fisa.id}?review=1${parse ? `&from=voice&src=${filled.source}` : ""}`
-      );
+      const why = filled.source === "heuristic" && filled.reason ? `&why=${encodeURIComponent(filled.reason)}` : "";
+      const q = `review=1${parse ? `&from=voice&src=${filled.source}${why}` : ""}`;
+      const offline = filled.reason === "offline" || (typeof navigator !== "undefined" && navigator.onLine === false);
+      if (offline) {
+        // /fise/[id] needs the network (RSC); the static editor route is
+        // precached by the service worker, so a full load works offline.
+        window.location.assign(`/fise/edit?id=${encodeURIComponent(fisa.id)}&${q}`);
+        return;
+      }
+      router.push(`/fise/${fisa.id}?${q}`);
     } finally {
       setBusy(false);
     }

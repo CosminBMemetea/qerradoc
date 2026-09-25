@@ -37,9 +37,24 @@ export type ExtractRequest = {
   hints?: ExtractHints;
 };
 
+/** Why the LLM path failed; returned to the client (not only logged). */
+export type ExtractFailReason =
+  | "rate_limited"
+  | "timeout"
+  | "network"
+  | "auth"
+  | "invalid_output"
+  | `http_${number}`;
+
 export type ExtractResponse =
-  | { ok: true; source: "llm"; model: string; data: Extraction }
-  | { ok: false; error: "missing_key" | "bad_request" | "upstream" | "invalid_output" };
+  | { ok: true; source: "llm"; model: string; data: Extraction; attempts?: string[] }
+  | {
+      ok: false;
+      error: "missing_key" | "bad_request" | "upstream" | "invalid_output";
+      reason?: ExtractFailReason | "missing_key" | "bad_request";
+      status?: number;
+      attempts?: string[];
+    };
 
 export const EXTRACT_MAX_TEXT = 4000;
 export const EXTRACT_MAX_HINTS = 150;
