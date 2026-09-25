@@ -80,6 +80,13 @@ export interface Fisa {
    * (follows only while it equals the old locale's default).
    */
   currencyManual?: boolean;
+  /**
+   * Field keys filled automatically from voice/text (LLM or heuristic);
+   * highlighted in the form until the user edits that field.
+   */
+  aiFilled?: string[];
+  /** ISO time the PDF was sent to the client via "Trimite clientului". */
+  sentAt?: string;
   createdAt: string;
   updatedAt: string;
   reviewed: boolean;

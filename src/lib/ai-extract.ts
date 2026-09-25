@@ -1,0 +1,409 @@
+/**
+ * Voice/text → fișă fields via an LLM (server route /api/extract).
+ * Isomorphic helpers: JSON schema, prompt, strict validation, mapping onto
+ * Fisa, catalog fuzzy-matching. No browser/Node-only APIs here so the same
+ * code is used by the route, the client and the smoke scripts.
+ */
+import type { CatalogClient, CatalogEquipment, ContentLocale, Fisa, Piesa, TipFisa } from "./types";
+import { EMPTY_PIESE, TIPURI } from "./types";
+
+export type ExtractedPart = {
+  denumire: string;
+  cod: string;
+  cantitate: string;
+  pret: string;
+};
+
+export type Extraction = {
+  client: string;
+  locatie: string;
+  modelUtilaj: string;
+  serie: string;
+  oreFunctionare: string;
+  tip: TipFisa | "";
+  reclamatie: string;
+  /** "Lucrări efectuate" — stored in Fisa.observatii (the "what was done" field). */
+  observatii: string;
+  manoperaOre: string;
+  deplasareKm: string;
+  piese: ExtractedPart[];
+};
+
+export type ExtractHints = { clients?: string[]; models?: string[] };
+
+export type ExtractRequest = {
+  text: string;
+  locale: ContentLocale;
+  hints?: ExtractHints;
+};
+
+export type ExtractResponse =
+  | { ok: true; source: "llm"; model: string; data: Extraction }
+  | { ok: false; error: "missing_key" | "bad_request" | "upstream" | "invalid_output" };
+
+export const EXTRACT_MAX_TEXT = 4000;
+export const EXTRACT_MAX_HINTS = 150;
+
+const TEXT_FIELDS = [
+  "client",
+  "locatie",
+  "modelUtilaj",
+  "serie",
+  "oreFunctionare",
+  "reclamatie",
+  "observatii",
+  "manoperaOre",
+  "deplasareKm",
+] as const;
+
+/** JSON schema for Groq structured outputs (strict: all required, no extras). */
+export const EXTRACTION_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [...TEXT_FIELDS, "tip", "piese"],
+  properties: {
+    client: { type: "string" },
+    locatie: { type: "string" },
+    modelUtilaj: { type: "string" },
+    serie: { type: "string" },
+    oreFunctionare: { type: "string" },
+    tip: { type: "string", enum: ["", ...TIPURI] },
+    reclamatie: { type: "string" },
+    observatii: { type: "string" },
+    manoperaOre: { type: "string" },
+    deplasareKm: { type: "string" },
+    piese: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["denumire", "cod", "cantitate", "pret"],
+        properties: {
+          denumire: { type: "string" },
+          cod: { type: "string" },
+          cantitate: { type: "string" },
+          pret: { type: "string" },
+        },
+      },
+    },
+  },
+} as const;
+
+const PROMPTS: Record<ContentLocale, string> = {
+  ro: `Ești asistentul unui tehnician de service pentru utilaje de curățenie. Primești o frază dictată sau un mesaj și completezi câmpurile unei fișe de intervenție.
+Reguli stricte:
+- Folosește DOAR informații spuse explicit în text. Nu inventa, nu ghici, nu completa din cunoștințe generale. Dacă o informație lipsește, lasă câmpul "" (șir gol) și piese [].
+- Scrie textul în limba română, exact cum l-a spus tehnicianul (nu traduce).
+- client = firma/locul clientului (ex. hotel, magazin). locatie = oraș/adresă doar dacă e spusă.
+- modelUtilaj = marca și modelul utilajului (ex. "Nilfisk SC500"). serie = seria/numărul de serie exact, fără cuvântul „seria”.
+- tip: "Reparație" pentru reparații/înlocuiri de piese, "Revizie" pentru revizie/mentenanță periodică, "Constatare" pentru doar diagnostic, "Punere în funcțiune" pentru instalare/PIF; altfel "".
+- reclamatie = problema raportată (defectul). observatii = lucrările efectuate (ce a făcut tehnicianul), fără lista de piese repetată.
+- manoperaOre = numărul de ore de manoperă ca cifră (ex. "două ore" → "2", "o oră și jumătate" → "1.5"). deplasareKm = kilometri ca cifră. oreFunctionare = ore de funcționare ale utilajului (contor) ca cifră.
+- piese = piesele schimbate/montate: denumire, cod (doar dacă e spus), cantitate ca cifră (implicit "1" dacă piesa e menționată fără cantitate), pret (doar dacă e spus, ca cifră).
+- Cifrele folosesc punct zecimal, fără unități.`,
+  en: `You assist a service technician for cleaning equipment. You receive a dictated sentence or a message and fill in the fields of a service job sheet.
+Strict rules:
+- Use ONLY information stated explicitly in the text. Do not invent, guess or fill from general knowledge. If something is missing, leave the field "" (empty string) and piese [].
+- Write text in English, as the technician said it (do not translate).
+- client = the customer's company/site (e.g. hotel, shop). locatie = city/address only if stated.
+- modelUtilaj = brand and model of the machine (e.g. "Nilfisk SC500"). serie = the exact serial number, without the word "serial".
+- tip: "Reparație" for repairs/part replacements, "Revizie" for service/periodic maintenance, "Constatare" for diagnosis only, "Punere în funcțiune" for installation/commissioning; otherwise "". (These values are fixed codes — keep them exactly.)
+- reclamatie = the reported problem (fault). observatii = the work done (what the technician did), without repeating the parts list.
+- manoperaOre = labour hours as a number (e.g. "two hours" → "2", "an hour and a half" → "1.5"). deplasareKm = kilometres as a number. oreFunctionare = machine hour-meter reading as a number.
+- piese = parts replaced/fitted: denumire (name), cod (only if stated), cantitate as a number (default "1" if mentioned without quantity), pret (only if stated, as a number).
+- Numbers use a decimal point and no units.`,
+  pl: `Pomagasz serwisantowi maszyn czyszczących. Otrzymujesz podyktowane zdanie lub wiadomość i wypełniasz pola karty serwisowej.
+Ścisłe zasady:
+- Używaj WYŁĄCZNIE informacji wyraźnie podanych w tekście. Nie wymyślaj, nie zgaduj, nie uzupełniaj z wiedzy ogólnej. Jeśli czegoś brakuje, zostaw pole "" (pusty ciąg) i piese [].
+- Pisz tekst po polsku, tak jak powiedział serwisant (nie tłumacz).
+- client = firma/obiekt klienta (np. hotel, sklep). locatie = miasto/adres tylko jeśli podano.
+- modelUtilaj = marka i model maszyny (np. "Nilfisk SC500"). serie = dokładny numer seryjny, bez słowa „seria”/„numer”.
+- tip: "Reparație" dla napraw/wymiany części, "Revizie" dla przeglądu/konserwacji okresowej, "Constatare" dla samej diagnozy, "Punere în funcțiune" dla instalacji/uruchomienia; w przeciwnym razie "". (To stałe kody — zachowaj je dokładnie.)
+- reclamatie = zgłoszony problem (usterka). observatii = wykonane prace (co zrobił serwisant), bez powtarzania listy części.
+- manoperaOre = godziny robocizny jako liczba (np. „dwie godziny” → "2", „półtorej godziny” → "1.5"). deplasareKm = kilometry jako liczba. oreFunctionare = stan licznika motogodzin jako liczba.
+- piese = wymienione/zamontowane części: denumire (nazwa), cod (tylko jeśli podano), cantitate jako liczba (domyślnie "1", gdy część wymieniono bez ilości), pret (tylko jeśli podano, jako liczba).
+- Liczby z kropką dziesiętną, bez jednostek.`,
+};
+
+const HINT_LABEL: Record<ContentLocale, { clients: string; models: string; note: string }> = {
+  ro: {
+    clients: "Clienți cunoscuți",
+    models: "Utilaje cunoscute",
+    note: "Dacă textul numește unul dintre ei (chiar aproximativ), folosește forma exactă din listă. Nu alege din listă ceva ce nu apare în text.",
+  },
+  en: {
+    clients: "Known clients",
+    models: "Known machines",
+    note: "If the text names one of them (even approximately), use the exact spelling from the list. Never pick a list entry that is not in the text.",
+  },
+  pl: {
+    clients: "Znani klienci",
+    models: "Znane maszyny",
+    note: "Jeśli tekst wymienia któregoś z nich (nawet w przybliżeniu), użyj dokładnej pisowni z listy. Nie wybieraj z listy niczego, czego nie ma w tekście.",
+  },
+};
+
+export function buildExtractMessages(req: ExtractRequest) {
+  const loc = req.locale;
+  let system = PROMPTS[loc];
+  const clients = (req.hints?.clients || []).slice(0, EXTRACT_MAX_HINTS);
+  const models = (req.hints?.models || []).slice(0, EXTRACT_MAX_HINTS);
+  if (clients.length || models.length) {
+    const h = HINT_LABEL[loc];
+    system += `\n\n${h.note}`;
+    if (clients.length) system += `\n${h.clients}: ${clients.join(" | ")}`;
+    if (models.length) system += `\n${h.models}: ${models.join(" | ")}`;
+  }
+  return [
+    { role: "system" as const, content: system },
+    { role: "user" as const, content: req.text },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Validation
+// ---------------------------------------------------------------------------
+
+/** Lowercase, strip diacritics and punctuation → space-separated tokens. */
+export function norm(s: string): string {
+  return (s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ł/g, "l")
+    .replace(/Ł/g, "l")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+const compact = (s: string) => norm(s).replace(/ /g, "");
+
+function str(v: unknown, max: number): string {
+  if (typeof v !== "string") return "";
+  return v.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+/** Numeric field → "2" / "1.5"; anything non-numeric → "". */
+export function numStr(v: unknown): string {
+  if (typeof v === "number" && Number.isFinite(v)) return v >= 0 ? String(v) : "";
+  if (typeof v !== "string") return "";
+  const m = v.replace(/\s/g, "").replace(",", ".").match(/^(\d+(?:\.\d+)?)[a-z]*$/i);
+  if (!m) return "";
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n >= 0 && n < 1_000_000 ? String(n) : "";
+}
+
+/**
+ * Grounding check: a proper-noun value must be traceable to the source text
+ * (or to a catalog hint that itself appears in the text). Guards against a
+ * model "helpfully" inventing a client, model or serial.
+ */
+function grounded(value: string, source: string, hints: string[] = []): boolean {
+  if (!value) return true;
+  const src = norm(source);
+  const srcCompact = src.replace(/ /g, "");
+  const tokens = norm(value).split(" ").filter((t) => t.length >= 3 || /\d/.test(t));
+  if (!tokens.length) return src.includes(norm(value));
+  const hits = tokens.filter((t) => src.includes(t) || srcCompact.includes(t)).length;
+  if (hits / tokens.length >= 0.5) return true;
+  // Accept a catalog canonical spelling if the text mentions it approximately.
+  const hv = hints.find((h) => compact(h) === compact(value));
+  return !!hv && fuzzyContains(src, hv);
+}
+
+function fuzzyContains(srcNorm: string, name: string): boolean {
+  const toks = norm(name).split(" ").filter((t) => t.length >= 3);
+  if (!toks.length) return false;
+  return toks.filter((t) => srcNorm.includes(t)).length / toks.length >= 0.5;
+}
+
+/**
+ * Validate raw LLM JSON → Extraction. Unknown/invalid values become "".
+ * Returns null only when the payload is not an object at all.
+ */
+export function validateExtraction(
+  raw: unknown,
+  sourceText: string,
+  hints?: ExtractHints
+): Extraction | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const r = raw as Record<string, unknown>;
+  const tipRaw = typeof r.tip === "string" ? r.tip.trim() : "";
+  const tip = (TIPURI as string[]).includes(tipRaw) ? (tipRaw as TipFisa) : "";
+
+  const client = str(r.client, 120);
+  const modelUtilaj = str(r.modelUtilaj, 120);
+  let serie = str(r.serie, 60).replace(/^(?:seria|serie|serial(?:\s+no\.?)?|s\/n|numer\s+seryjny|nr\.?)(?:\s*[:#]\s*|\s+)/i, "");
+  // Serial must literally occur in the text (ignoring spaces/dashes/case).
+  if (serie && !compact(sourceText).includes(compact(serie))) serie = "";
+
+  const piese: ExtractedPart[] = [];
+  if (Array.isArray(r.piese)) {
+    for (const p of r.piese.slice(0, 15)) {
+      if (!p || typeof p !== "object") continue;
+      const o = p as Record<string, unknown>;
+      const denumire = str(o.denumire, 120);
+      if (!denumire) continue;
+      let cod = str(o.cod, 60);
+      if (cod && !compact(sourceText).includes(compact(cod))) cod = "";
+      piese.push({
+        denumire,
+        cod,
+        cantitate: numStr(o.cantitate) || "1",
+        pret: numStr(o.pret),
+      });
+    }
+  }
+
+  return {
+    client: grounded(client, sourceText, hints?.clients) ? client : "",
+    locatie: (() => {
+      const l = str(r.locatie, 160);
+      return grounded(l, sourceText) ? l : "";
+    })(),
+    modelUtilaj: grounded(modelUtilaj, sourceText, hints?.models) ? modelUtilaj : "",
+    serie,
+    oreFunctionare: numStr(r.oreFunctionare),
+    tip,
+    reclamatie: str(r.reclamatie, 600),
+    observatii: str(r.observatii, 1200),
+    manoperaOre: numStr(r.manoperaOre),
+    deplasareKm: numStr(r.deplasareKm),
+    piese,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Catalog matching (client-side, on-device catalogs)
+// ---------------------------------------------------------------------------
+
+function dice(a: string, b: string): number {
+  const A = compact(a);
+  const B = compact(b);
+  if (!A || !B) return 0;
+  if (A === B) return 1;
+  const grams = (s: string) => {
+    const m = new Map<string, number>();
+    for (let i = 0; i < s.length - 1; i++) {
+      const g = s.slice(i, i + 2);
+      m.set(g, (m.get(g) || 0) + 1);
+    }
+    return m;
+  };
+  const ga = grams(A);
+  const gb = grams(B);
+  let inter = 0;
+  ga.forEach((n, g) => {
+    inter += Math.min(n, gb.get(g) || 0);
+  });
+  return (2 * inter) / (A.length - 1 + (B.length - 1));
+}
+
+/** Best catalog entry for a spoken name (≥ threshold similarity or containment). */
+export function bestMatch<T>(
+  name: string,
+  list: T[],
+  key: (t: T) => string,
+  threshold = 0.72
+): T | undefined {
+  const n = compact(name);
+  if (n.length < 3) return undefined;
+  let best: T | undefined;
+  let bestScore = 0;
+  for (const item of list) {
+    const k = compact(key(item));
+    if (!k) continue;
+    let score = dice(name, key(item));
+    if (k.length >= 4 && (n.includes(k) || k.includes(n))) score = Math.max(score, 0.9);
+    if (score > bestScore) {
+      bestScore = score;
+      best = item;
+    }
+  }
+  return bestScore >= threshold ? best : undefined;
+}
+
+export function applyCatalog(
+  ex: Extraction,
+  clients: CatalogClient[],
+  equipment: CatalogEquipment[]
+): Extraction {
+  const out = { ...ex };
+  // Serial is the strongest key: exact equipment match fills model/client.
+  const bySerie = out.serie
+    ? equipment.find((e) => e.serie && compact(e.serie) === compact(out.serie))
+    : undefined;
+  if (bySerie) {
+    out.modelUtilaj = bySerie.model;
+    if (!out.client && bySerie.clientName) out.client = bySerie.clientName;
+  } else if (out.modelUtilaj) {
+    const m = bestMatch(out.modelUtilaj, equipment, (e) => e.model);
+    if (m) out.modelUtilaj = m.model;
+  }
+  if (out.client) {
+    const c = bestMatch(out.client, clients, (x) => x.name);
+    if (c) {
+      out.client = c.name;
+      if (!out.locatie && c.locatie) out.locatie = c.locatie;
+    }
+  }
+  return out;
+}
+
+export function catalogHints(
+  clients: CatalogClient[],
+  equipment: CatalogEquipment[]
+): ExtractHints {
+  const uniq = (a: string[]) => Array.from(new Set(a.filter(Boolean))).slice(0, EXTRACT_MAX_HINTS);
+  return {
+    clients: uniq(clients.map((c) => c.name)),
+    models: uniq(equipment.map((e) => e.model)),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Mapping onto Fisa
+// ---------------------------------------------------------------------------
+
+/** Field keys that the voice/AI filled — highlighted in the form until edited. */
+export type AiFilledKey =
+  | (typeof TEXT_FIELDS)[number]
+  | "tip"
+  | "piese"
+  | "deplasareDaNu";
+
+export function extractionToFisa(ex: Extraction): {
+  patch: Partial<Fisa>;
+  filled: AiFilledKey[];
+} {
+  const patch: Partial<Fisa> = {};
+  const filled: AiFilledKey[] = [];
+  for (const k of TEXT_FIELDS) {
+    if (ex[k]) {
+      (patch as Record<string, string>)[k] = ex[k];
+      filled.push(k);
+    }
+  }
+  if (ex.tip) {
+    patch.tip = ex.tip;
+    filled.push("tip");
+  }
+  if (ex.deplasareKm && Number(ex.deplasareKm) > 0) {
+    patch.deplasareDaNu = "DA";
+    filled.push("deplasareDaNu");
+  }
+  const piese: Piesa[] = EMPTY_PIESE();
+  ex.piese.slice(0, 15).forEach((p, i) => {
+    piese[i] = { nr: i + 1, denumire: p.denumire, cod: p.cod, cantitate: p.cantitate, pretEur: p.pret };
+  });
+  if (ex.piese.length) {
+    patch.piese = piese;
+    filled.push("piese");
+  }
+  return { patch, filled };
+}
+
+/** True if the extraction carries any real content. */
+export function extractionHasContent(ex: Extraction): boolean {
+  return extractionToFisa(ex).filled.length > 0;
+}

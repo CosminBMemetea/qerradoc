@@ -7,7 +7,9 @@ import BigButton from "@/components/BigButton";
 import DictateButton from "@/components/DictateButton";
 import { Field, textareaCls } from "@/components/Field";
 import { emptyFisa } from "@/lib/types";
-import { parseWhatsAppText, sampleWhatsApp } from "@/lib/parse-text";
+import { sampleWhatsApp } from "@/lib/parse-text";
+import { voiceFill } from "@/lib/voice-fill";
+import type { Fisa } from "@/lib/types";
 import { saveFisa, getSession } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 
@@ -35,10 +37,13 @@ function TextInner() {
     setBusy(true);
     try {
       const session = await getSession();
-      const parsed = parse ? parseWhatsAppText(text) : { reclamatie: text };
       const year = new Date().getFullYear();
       const contentLocale =
         locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
+      const filled = parse
+        ? await voiceFill(text, contentLocale)
+        : { patch: { reclamatie: text } as Partial<Fisa>, filled: [], source: "heuristic" as const };
+      const parsed = filled.patch;
       const fisa = emptyFisa({
         ...parsed,
         nrFisa: parsed.nrFisa || `${year}-${String(Date.now()).slice(-4)}`,
@@ -47,9 +52,12 @@ function TextInner() {
         reviewed: false,
         audioNoteDataUrl,
         contentLocale,
+        aiFilled: filled.filled.length ? filled.filled : undefined,
       });
       await saveFisa(fisa);
-      router.push(`/fise/${fisa.id}?review=1`);
+      router.push(
+        `/fise/${fisa.id}?review=1${parse ? `&from=voice&src=${filled.source}` : ""}`
+      );
     } finally {
       setBusy(false);
     }
@@ -88,7 +96,7 @@ function TextInner() {
           onClick={() => go(true)}
           disabled={busy || (!text.trim() && !audioNoteDataUrl)}
         >
-          {t("text.parse")}
+          {busy ? t("voice.filling") : t("text.parse")}
         </BigButton>
         <BigButton
           variant="secondary"

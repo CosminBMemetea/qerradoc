@@ -367,6 +367,9 @@ const ro: Dict = {
   "menu.catalog": "Catalog clienți și utilaje",
   "menu.backup": "Backup și restaurare",
   "menu.close": "Închide",
+  "voice.filling": "Completez fișa…",
+  "voice.bannerBasic": "Completare de bază, fără AI (offline sau indisponibil) — verifică atent.",
+  "voice.legend": "Câmpurile evidențiate au fost completate din voce. Evidențierea dispare când le editezi.",
 };
 
 const en: Dict = {
@@ -697,6 +700,9 @@ const en: Dict = {
   "menu.catalog": "Clients & equipment catalog",
   "menu.backup": "Backup & restore",
   "menu.close": "Close",
+  "voice.filling": "Filling the sheet…",
+  "voice.bannerBasic": "Basic fill without AI (offline or unavailable) — check carefully.",
+  "voice.legend": "Highlighted fields were filled from your voice. The highlight goes away once you edit them.",
 };
 
 const pl: Dict = {
@@ -1029,6 +1035,9 @@ const pl: Dict = {
   "menu.catalog": "Katalog klientów i maszyn",
   "menu.backup": "Kopia zapasowa i przywracanie",
   "menu.close": "Zamknij",
+  "voice.filling": "Wypełniam kartę…",
+  "voice.bannerBasic": "Podstawowe wypełnienie bez AI (offline lub niedostępne) — sprawdź dokładnie.",
+  "voice.legend": "Wyróżnione pola zostały wypełnione z głosu. Wyróżnienie znika po ich edycji.",
 };
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };

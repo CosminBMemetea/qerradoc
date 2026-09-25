@@ -23,14 +23,32 @@ import DictateButton from "./DictateButton";
 import SignaturePad from "./SignaturePad";
 import DatePicker from "./DatePicker";
 
+const AI_HL =
+  " !border-indigo-300 !bg-indigo-50/70 dark:!border-indigo-700 dark:!bg-indigo-950/40";
+
+/** Drop a field from aiFilled as soon as the user changes its value. */
+function dropEdited(prev: Fisa, next: Fisa): Fisa {
+  const keys = next.aiFilled;
+  if (!keys || !keys.length || next.aiFilled !== prev.aiFilled) return next;
+  const rec = (f: Fisa, k: string) =>
+    JSON.stringify((f as unknown as Record<string, unknown>)[k] ?? "");
+  const kept = keys.filter((k) => rec(prev, k) === rec(next, k));
+  return kept.length === keys.length ? next : { ...next, aiFilled: kept };
+}
+
 export default function FisaForm({
   fisa,
-  onChange,
+  onChange: onChangeRaw,
 }: {
   fisa: Fisa;
   onChange: (f: Fisa) => void;
 }) {
   const { t } = useI18n();
+  const onChange = (next: Fisa) => onChangeRaw(dropEdited(fisa, next));
+  const aiSet = new Set(fisa.aiFilled || []);
+  const hl = (k: string) => (aiSet.has(k) ? AI_HL : "");
+  const aiAttr = (k: string) =>
+    aiSet.has(k) ? { "data-ai-filled": "true" } : {};
   const clientListId = useId();
   const equipListId = useId();
   const currencyLabelId = useId();
@@ -125,8 +143,22 @@ export default function FisaForm({
         </div>
       </details>
 
+      {aiSet.size > 0 && (
+        <div
+          role="status"
+          data-testid="ai-legend"
+          className="mb-4 flex items-start gap-2.5 rounded-xl border border-indigo-200/80 dark:border-indigo-800/60 bg-indigo-50/70 dark:bg-indigo-950/40 px-3.5 py-2.5 text-xs text-indigo-900 dark:text-indigo-200 leading-relaxed"
+        >
+          <span aria-hidden="true" className="text-sm leading-none mt-px">✦</span>
+          <span>{t("voice.legend")}</span>
+        </div>
+      )}
+
       <Field label={t("form.tip")} hint={t("hint.tip")}>
-        <div className="grid grid-cols-2 gap-2">
+        <div
+          className={`grid grid-cols-2 gap-2 rounded-2xl ${aiSet.has("tip") ? "p-1 ring-2 ring-indigo-300/80 dark:ring-indigo-700/70" : ""}`}
+          {...aiAttr("tip")}
+        >
           {TIPURI.map((tip) => (
             <button
               key={tip}
@@ -163,7 +195,8 @@ export default function FisaForm({
 
       <Field label={t("form.client")} hint={t("hint.client")}>
         <input
-          className={inputCls}
+          className={inputCls + hl("client")}
+          {...aiAttr("client")}
           list={clientListId}
           value={fisa.client}
           onChange={(e) => {
@@ -197,7 +230,8 @@ export default function FisaForm({
 
       <Field label={t("form.locatie")} hint={t("hint.locatie")}>
         <input
-          className={inputCls}
+          className={inputCls + hl("locatie")}
+          {...aiAttr("locatie")}
           value={fisa.locatie}
           onChange={(e) => set("locatie", e.target.value)}
         />
@@ -205,7 +239,8 @@ export default function FisaForm({
 
       <Field label={t("form.modelUtilaj")} hint={t("hint.modelUtilaj")}>
         <input
-          className={inputCls}
+          className={inputCls + hl("modelUtilaj")}
+          {...aiAttr("modelUtilaj")}
           list={equipListId}
           value={fisa.modelUtilaj}
           onChange={(e) => {
@@ -257,14 +292,16 @@ export default function FisaForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("form.serie")}>
           <input
-            className={inputCls}
+            className={inputCls + hl("serie")}
+          {...aiAttr("serie")}
             value={fisa.serie}
             onChange={(e) => set("serie", e.target.value)}
           />
         </Field>
         <Field label={t("form.oreFunctionare")}>
           <input
-            className={inputCls}
+            className={inputCls + hl("oreFunctionare")}
+          {...aiAttr("oreFunctionare")}
             inputMode="decimal"
             value={fisa.oreFunctionare}
             onChange={(e) => set("oreFunctionare", e.target.value)}
@@ -275,7 +312,8 @@ export default function FisaForm({
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("form.manoperaOre")}>
           <input
-            className={inputCls}
+            className={inputCls + hl("manoperaOre")}
+          {...aiAttr("manoperaOre")}
             inputMode="decimal"
             value={fisa.manoperaOre}
             onChange={(e) => set("manoperaOre", e.target.value)}
@@ -283,7 +321,8 @@ export default function FisaForm({
         </Field>
         <Field label={t("form.deplasareKm")}>
           <input
-            className={inputCls}
+            className={inputCls + hl("deplasareKm")}
+          {...aiAttr("deplasareKm")}
             inputMode="decimal"
             value={fisa.deplasareKm}
             onChange={(e) => set("deplasareKm", e.target.value)}
@@ -292,7 +331,10 @@ export default function FisaForm({
       </div>
 
       <Field label={t("form.deplasareDaNu")}>
-        <div className="flex gap-2">
+        <div
+          className={`flex gap-2 rounded-2xl ${aiSet.has("deplasareDaNu") ? "p-1 ring-2 ring-indigo-300/80 dark:ring-indigo-700/70" : ""}`}
+          {...aiAttr("deplasareDaNu")}
+        >
           {(
             [
               { v: "DA" as const, label: t("form.yes") },
@@ -317,7 +359,8 @@ export default function FisaForm({
 
       <Field label={t("form.reclamatie")} hint={t("hint.reclamatie")}>
         <textarea
-          className={textareaCls}
+          className={textareaCls + hl("reclamatie")}
+          {...aiAttr("reclamatie")}
           value={fisa.reclamatie}
           placeholder={t("hint.reclamatie")}
           onChange={(e) => set("reclamatie", e.target.value)}
@@ -412,7 +455,11 @@ export default function FisaForm({
         </div>
         <div className="space-y-3">
           {fisa.piese.slice(0, 15).map((p, idx) => (
-            <div key={p.nr} className="qf-card p-3">
+            <div
+              key={p.nr}
+              className={`qf-card p-3${aiSet.has("piese") && p.denumire.trim() ? " !border-indigo-300 dark:!border-indigo-700 ring-1 ring-indigo-300/60 dark:ring-indigo-700/50" : ""}`}
+              {...(aiSet.has("piese") && p.denumire.trim() ? { "data-ai-filled": "true" } : {})}
+            >
               <div className="text-xs font-medium text-stone-400 dark:text-stone-500 mb-1.5">
                 {t("form.piesaNr")} {p.nr}
               </div>
@@ -468,7 +515,8 @@ export default function FisaForm({
 
       <Field label={t("form.observatii")} hint={t("hint.observatii")}>
         <textarea
-          className={textareaCls}
+          className={textareaCls + hl("observatii")}
+          {...aiAttr("observatii")}
           value={fisa.observatii}
           placeholder={t("hint.observatii")}
           onChange={(e) => set("observatii", e.target.value)}

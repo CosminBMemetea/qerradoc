@@ -18,6 +18,8 @@ function EditInner() {
   const mustReview = search.get("review") === "1";
   const fromExcel = search.get("from") === "excel";
   const [excelBannerOpen, setExcelBannerOpen] = useState(fromExcel);
+  const fromVoice = search.get("from") === "voice";
+  const voiceBasic = search.get("src") === "heuristic";
   const [fisa, setFisa] = useState<Fisa | null>(null);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
@@ -107,6 +109,15 @@ function EditInner() {
           >
             ×
           </button>
+        </div>
+      )}
+      {fromVoice && voiceBasic && (
+        <div
+          role="status"
+          data-testid="voice-banner"
+          className="rounded-2xl border shadow-sm mb-3 p-3.5 text-sm text-amber-950 dark:text-amber-100 bg-amber-50 dark:bg-amber-950/40 border-amber-200/80 dark:border-amber-800/60 leading-relaxed"
+        >
+          {t("voice.bannerBasic")}
         </div>
       )}
       <FisaForm fisa={fisa} onChange={setFisa} />
