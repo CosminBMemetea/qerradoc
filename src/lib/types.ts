@@ -73,6 +73,13 @@ export interface Fisa {
    * rows → resolveCurrency() falls back to the contentLocale default.
    */
   currency?: CurrencyCode;
+  /**
+   * True once the user explicitly picked a currency (or an import stated one).
+   * A manual pick survives document-language changes; when false the currency
+   * follows the contentLocale default. Missing on legacy rows → legacy rule
+   * (follows only while it equals the old locale's default).
+   */
+  currencyManual?: boolean;
   createdAt: string;
   updatedAt: string;
   reviewed: boolean;
@@ -143,6 +150,7 @@ export function emptyFisa(partial?: Partial<Fisa>): Fisa {
     currency:
       partial?.currency ??
       defaultCurrencyForLocale(resolveContentLocale(base)),
+    currencyManual: partial?.currencyManual ?? false,
   };
 }
 

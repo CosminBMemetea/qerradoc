@@ -69,6 +69,32 @@ export function resolveCurrency(
   return defaultCurrencyForLocale(loc);
 }
 
+/**
+ * Currency after a document-language (contentLocale) change.
+ * - currencyManual === true  → keep the user's pick.
+ * - currencyManual === false → follow the new locale default.
+ * - currencyManual missing (legacy rows) → follow only while the current
+ *   currency still equals the old locale's default.
+ */
+export function currencyAfterLocaleChange(
+  fisa: {
+    currency?: string | null;
+    contentLocale?: ContentLocale | string | null;
+    currencyManual?: boolean | null;
+  },
+  next: CurrencyLocale | string
+): CurrencyCode {
+  const current = resolveCurrency(fisa);
+  const nextDefault = defaultCurrencyForLocale(
+    String(next ?? "ro").toLowerCase().slice(0, 2)
+  );
+  if (fisa.currencyManual === true) return current;
+  if (fisa.currencyManual === false) return nextDefault;
+  const raw = fisa.contentLocale;
+  const oldLoc = raw ? String(raw).toLowerCase().slice(0, 2) : "ro";
+  return current === defaultCurrencyForLocale(oldLoc) ? nextDefault : current;
+}
+
 /** Display symbol for a currency code: lei, €, zł, £, $. */
 export function symbolForCurrency(code: CurrencyCode): string {
   return SYMBOLS[code] ?? SYMBOLS.RON;

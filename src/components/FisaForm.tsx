@@ -12,7 +12,7 @@ import { TIPURI, resolveContentLocale } from "@/lib/types";
 import { useI18n, LOCALE_LABELS } from "@/lib/i18n";
 import {
   CURRENCIES,
-  defaultCurrencyForLocale,
+  currencyAfterLocaleChange,
   resolveCurrency,
   symbolForCurrency,
   type CurrencyCode,
@@ -60,13 +60,12 @@ export default function FisaForm({
   const onContentLocaleChange = (next: ContentLocale) => {
     if (next === contentLocale) return;
     if (!confirm(t("form.contentLocaleWarn"))) return;
-    // Currency follows the language only while it is still the old default;
-    // an explicitly picked currency is kept.
-    const followsLocale = currency === defaultCurrencyForLocale(contentLocale);
+    // A manual pick (currencyManual) is kept; otherwise the currency follows
+    // the new document language (legacy rows: only while still the old default).
     onChange({
       ...fisa,
       contentLocale: next,
-      currency: followsLocale ? defaultCurrencyForLocale(next) : currency,
+      currency: currencyAfterLocaleChange(fisa, next),
     });
   };
 
@@ -379,7 +378,13 @@ export default function FisaForm({
                   role="radio"
                   aria-checked={active}
                   title={c}
-                  onClick={() => set("currency", c as CurrencyCode)}
+                  onClick={() =>
+                    onChange({
+                      ...fisa,
+                      currency: c as CurrencyCode,
+                      currencyManual: true,
+                    })
+                  }
                   className={`min-h-[44px] rounded-xl border px-1 leading-tight transition focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                     active
                       ? "bg-indigo-600 text-white border-indigo-700"

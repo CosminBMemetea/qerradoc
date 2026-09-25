@@ -65,6 +65,9 @@ function softNormalizeFisa(raw: unknown): Fisa | null {
     // Per-sheet currency: keep valid codes; missing/invalid → undefined
     // (read-time fallback to the contentLocale default).
     currency: normalizeCurrency(raw.currency),
+    // Manual-pick flag: booleans only; anything else dropped (legacy rule).
+    currencyManual:
+      typeof raw.currencyManual === "boolean" ? raw.currencyManual : undefined,
     // Soft-normalize optional image fields — ignore non-string junk
     photoDataUrl: optStr(raw.photoDataUrl),
     audioNoteDataUrl: optStr(raw.audioNoteDataUrl),

@@ -195,8 +195,10 @@ export function pdfCurrency(
   );
 }
 
-function resolveLocale(locale?: string): PdfLocale {
-  if (locale === "en" || locale === "pl" || locale === "ro") return locale;
+/** Normalize "en", "EN", "en-GB", "pl-PL" → PdfLocale (fallback ro). */
+function resolveLocale(locale?: string | null): PdfLocale {
+  const loc = String(locale ?? "").toLowerCase().slice(0, 2);
+  if (loc === "en" || loc === "pl" || loc === "ro") return loc;
   return "ro";
 }
 
