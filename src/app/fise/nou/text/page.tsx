@@ -65,7 +65,7 @@ function TextInner() {
   }
 
   return (
-    <AppShell title={t("text.title")} backHref="/fise/nou">
+    <AppShell title={t("text.title")} backHref="/fise">
       <Field label={t("text.label")}>
         <textarea
           className={textareaCls + " min-h-[200px]"}
@@ -124,7 +124,7 @@ export default function NewFromTextPage() {
 function TextFallback() {
   const { t } = useI18n();
   return (
-    <AppShell title={t("text.title")} backHref="/fise/nou">
+    <AppShell title={t("text.title")} backHref="/fise">
       <p className="text-center text-muted py-10">{t("app.loadingShort")}</p>
     </AppShell>
   );

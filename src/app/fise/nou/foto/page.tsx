@@ -89,7 +89,7 @@ export default function NewFromPhotoPage() {
   }
 
   return (
-    <AppShell title={t("photo.title")} backHref="/fise/nou">
+    <AppShell title={t("photo.title")} backHref="/fise">
       <input
         ref={inputRef}
         type="file"
