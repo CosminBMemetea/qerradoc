@@ -1114,6 +1114,15 @@ const pl: Dict = {
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };
 
+/**
+ * Translate in a fixed language (e.g. the document contentLocale), independent
+ * of the UI language. Use for text written INTO a fișă.
+ */
+export function tIn(locale: string, key: string): string {
+  const l: Locale = locale === "en" || locale === "pl" ? locale : "ro";
+  return DICTS[l][key] ?? DICTS.ro[key] ?? key;
+}
+
 function readStoredLocale(): Locale {
   if (typeof window === "undefined") return "ro";
   try {

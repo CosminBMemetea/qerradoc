@@ -7,7 +7,7 @@ import BigButton from "@/components/BigButton";
 import { emptyFisa, newSheetContentLocale, type Fisa } from "@/lib/types";
 import { demoFillFromPhoto, resolveNewSheetTip } from "@/lib/parse-text";
 import { saveFisa, getSession, getSettings } from "@/lib/db";
-import { useI18n } from "@/lib/i18n";
+import { tIn, useI18n } from "@/lib/i18n";
 
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -78,9 +78,9 @@ export default function NewFromPhotoPage() {
         contentLocale,
         observatii:
           mode === "ocr"
-            ? t("photo.obsOcr")
+            ? tIn(contentLocale, "photo.obsOcr")
             : mode === "model"
-              ? t("photo.obsModel")
+              ? tIn(contentLocale, "photo.obsModel")
               : "",
       });
       await saveFisa(fisa);

@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { emptyFisa, type ContentLocale } from "../src/lib/types.ts";
 import { generateFisaPdf } from "../src/lib/pdf.ts";
 import { clientMessage } from "../src/lib/send-to-client.ts";
-import { docDate } from "../src/lib/date-format.ts";
+import { docDate, localIsoDate } from "../src/lib/date-format.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "pdf-dates-"));
 const EXPECT: Record<ContentLocale, { a: string; i: string; stamp: RegExp }> = {
@@ -45,5 +45,29 @@ for (const loc of ["ro", "en", "pl"] as ContentLocale[]) {
   assert.match(text, e.stamp, `${loc}: footer stamp in locale format`);
   assert.ok(clientMessage(fisa, { companyName: "Test SRL" }).includes(e.i), `${loc}: share message date`);
   console.log(`[${loc}] ok: ${e.a}, ${e.i}`);
+}
+// New sheet's default date = LOCAL date (00:00–03:00 Bucharest is not "yesterday").
+{
+  const prevTz = process.env.TZ;
+  process.env.TZ = "Europe/Bucharest";
+  const at = new Date("2026-09-25T22:30:00Z"); // 01:30 EEST on 26 Sep
+  assert.equal(localIsoDate(at), "2026-09-26");
+  const RealDate = Date;
+  class FakeDate extends RealDate {
+    constructor(...a: unknown[]) {
+      if (a.length) super(...(a as [string]));
+      else super(at.getTime());
+    }
+    static now() { return at.getTime(); }
+  }
+  (globalThis as { Date: DateConstructor }).Date = FakeDate as unknown as DateConstructor;
+  try {
+    assert.equal(emptyFisa().dataInterventiei, "2026-09-26", "emptyFisa uses local date");
+    assert.ok(clientMessage(emptyFisa({ nrFisa: "1", dataInterventiei: "", contentLocale: "ro" }), { companyName: "" }).includes("26.09.2026"), "share msg fallback = local today");
+  } finally {
+    (globalThis as { Date: DateConstructor }).Date = RealDate;
+    if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz;
+  }
+  console.log("[local-date] ok: 01:30 EEST → 2026-09-26");
 }
 console.log("smoke-pdf-dates: OK");

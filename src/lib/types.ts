@@ -1,4 +1,5 @@
 import { defaultCurrencyForLocale, type CurrencyCode } from "./currency";
+import { localIsoDate } from "./date-format";
 
 export type { CurrencyCode } from "./currency";
 
@@ -148,7 +149,7 @@ export function emptyFisa(partial?: Partial<Fisa>): Fisa {
     reclamatie: "",
     piese: EMPTY_PIESE(),
     dataAnuntarii: "",
-    dataInterventiei: new Date().toISOString().slice(0, 10),
+    dataInterventiei: localIsoDate(),
     observatii: "",
     motiveInlocuire: "",
     semnaturaClient: "",

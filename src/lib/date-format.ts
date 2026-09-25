@@ -4,6 +4,15 @@ export function docDate(v: string | undefined | null, locale: string): string {
   return formatDateForLocale(raw.slice(0, 10), locale) || raw;
 }
 
+/**
+ * Today's date as yyyy-mm-dd in the device's local time zone (not UTC:
+ * toISOString() gave "yesterday" between 00:00 and 03:00 in Bucharest).
+ */
+export function localIsoDate(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 /** Local date+time stamp in the document locale (dd.mm.yyyy HH:MM / dd/mm/yyyy HH:MM). */
 export function docStamp(d: Date, locale: string): string {
   const p = (n: number) => String(n).padStart(2, "0");

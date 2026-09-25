@@ -49,6 +49,13 @@ assert.equal(parseWhatsAppText("serie: SN-998877").serie, "SN-998877");
 assert.equal(parseWhatsAppText("S/N 12345678").serie, "12345678");
 assert.equal(parseWhatsAppText("adresa: str. Mare 5, Cluj").locatie, "str. Mare 5");
 
+// Labour hours without a labour keyword (ac5 item 5).
+assert.equal(parseWhatsAppText("two hours").manoperaOre, "2");
+assert.equal(parseWhatsAppText("Tennant T300 nr seryjny TN-112233, dwie godziny").manoperaOre, "2");
+assert.equal(parseWhatsAppText("două ore").manoperaOre, "2");
+assert.equal(parseWhatsAppText("one and a half hours").manoperaOre, "1.5");
+assert.equal(parseWhatsAppText("utilaj cu 1842 ore de funcționare").manoperaOre, undefined, "hour meter ≠ labour");
+
 // WhatsApp samples (ro/en/pl).
 const s = {
   ro: parseWhatsAppText(sampleWhatsApp("ro")),

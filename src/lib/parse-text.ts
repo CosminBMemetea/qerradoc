@@ -1,5 +1,6 @@
 import type { Fisa, TipFisa } from "./types";
 import { EMPTY_PIESE } from "./types";
+import { localIsoDate } from "./date-format";
 
 /*
  * Word-boundary helpers. JS `\b` is ASCII-only (it breaks on ă, ș, ł…) and
@@ -169,7 +170,13 @@ export function parseWhatsAppText(text: string): Partial<Fisa> {
     NUM.replace(WE, ""),
     `\\s*(?:h|ore|or[ăa]|hours?|godzin\\p{L}*)${WE}\\s*(?:de\\s+)?(?:manoper\\p{L}*|labou?r|robocizn\\p{L}*|lucru|work)`
   ).exec(t);
-  const man = manBefore?.[1] ?? manAfter?.[1];
+  // "two hours" / "dwie godziny" / "două ore" with no labour word → labour,
+  // unless it is the hour meter ("ore de funcționare", "hours meter").
+  const manBare = kw(
+    NUM.replace(WE, ""),
+    `\\s*(?:h|ore|or[ăa]|hours?|godzin\\p{L}*)${WE}(?!\\s*(?:de\\s+)?(?:func\\p{L}*|meter|counter|contor))`
+  ).exec(t);
+  const man = manBefore?.[1] ?? manAfter?.[1] ?? manBare?.[1];
   if (man) {
     const v = numValue(man);
     if (v) result.manoperaOre = v;
@@ -343,8 +350,8 @@ export function demoFillFromPhoto(
       deplasareDaNu: "DA",
       reclamatie:
         "Machine not vacuuming properly; check filter and vacuum system. Filled from photo (demo).",
-      dataAnuntarii: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-      dataInterventiei: new Date().toISOString().slice(0, 10),
+      dataAnuntarii: localIsoDate(new Date(Date.now() - 86400000 * 2)),
+      dataInterventiei: localIsoDate(),
       observatii: "Asset photo attached to job sheet.",
       motiveInlocuire: "Normal filter wear after operating hours.",
       piese: (() => {
@@ -382,8 +389,8 @@ export function demoFillFromPhoto(
       deplasareDaNu: "DA",
       reclamatie:
         "Urządzenie słabo odsysa; sprawdzić filtr i układ ssący. Uzupełnione ze zdjęcia (demo).",
-      dataAnuntarii: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-      dataInterventiei: new Date().toISOString().slice(0, 10),
+      dataAnuntarii: localIsoDate(new Date(Date.now() - 86400000 * 2)),
+      dataInterventiei: localIsoDate(),
       observatii: "Zdjęcie urządzenia dołączone do protokołu.",
       motiveInlocuire: "Naturalne zużycie filtra po motogodzinach.",
       piese: (() => {
@@ -420,8 +427,8 @@ export function demoFillFromPhoto(
     deplasareDaNu: "DA",
     reclamatie:
       "Utilaj nu aspiră corect; verificare filtru și sistem vid. Completat din fotografie (demo).",
-    dataAnuntarii: new Date(Date.now() - 86400000 * 2).toISOString().slice(0, 10),
-    dataInterventiei: new Date().toISOString().slice(0, 10),
+    dataAnuntarii: localIsoDate(new Date(Date.now() - 86400000 * 2)),
+    dataInterventiei: localIsoDate(),
     observatii: "Fotografie utilaj atașată la fișă.",
     motiveInlocuire: "Uzura normală a filtrului după orele de funcționare.",
     piese: (() => {
