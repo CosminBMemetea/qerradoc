@@ -127,9 +127,17 @@ function mocked() {
   const noMatch = applyCatalog({ ...ro, client: "Spital Județean", serie: "" }, clients, equipment);
   assert.equal(noMatch.client, "Spital Județean", "no false catalog match");
 
-  // Catalog canonical spelling accepted by grounding when text names it approximately.
+  // Client guard: a catalog hint the text doesn't name ("Forum") is not grabbed…
   const hinted = validateExtraction({ ...llmRo, client: "HOTEL CONTINENTAL FORUM", locatie: "" }, SENTENCES.ro, { clients: ["HOTEL CONTINENTAL FORUM"] })!;
-  assert.equal(hinted.client, "HOTEL CONTINENTAL FORUM");
+  assert.equal(hinted.client, "", "grabbed catalog client dropped");
+  const grabbed = applyCatalog({ ...hinted, serie: "" }, clients, equipment);
+  assert.equal(grabbed.client, "", "…and no catalog location comes with it");
+  assert.equal(grabbed.locatie, "");
+  // …but the canonical spelling is accepted when the text names it.
+  const named = validateExtraction({ ...llmRo, client: "HOTEL CONTINENTAL FORUM", locatie: "" }, "Hotel Continental Forum, " + SENTENCES.ro.split(", ").slice(1).join(", "), { clients: ["HOTEL CONTINENTAL FORUM"] })!;
+  assert.equal(named.client, "HOTEL CONTINENTAL FORUM");
+  assert.equal(validateExtraction({ ...llmRo, client: "Continental" }, SENTENCES.ro)!.client, "Continental");
+  assert.equal(validateExtraction({ ...llmRo, client: "Hotel Belvedere" }, SENTENCES.ro)!.client, "", "generic word 'Hotel' alone doesn't trace");
 
   // EN/PL mocked outputs stay in their language (validator never translates).
   const en = validateExtraction({ client: "Grand Hotel Leeds", locatie: "", modelUtilaj: "Kärcher B 40", serie: "KB-445566", oreFunctionare: "", tip: "Reparație", reclamatie: "Not picking up water", observatii: "Replaced the squeegee blade and the vacuum hose", manoperaOre: "1.5", deplasareKm: "22", piese: [{ denumire: "Squeegee blade", cod: "", cantitate: "1", pret: "" }, { denumire: "Vacuum hose", cod: "", cantitate: "1", pret: "" }] }, SENTENCES.en)!;
@@ -180,6 +188,39 @@ function mocked() {
   const pl2 = validateExtraction({ ...blank, piese: [{ denumire: "Szczotka walcowa", cod: "", cantitate: "1", pret: "120" }] }, "wymieniłem szczotkę walcową za 120 zł")!;
   assert.equal(pl2.piese[0].denumire, "Szczotka walcowa", "inflected PL name matches");
   assert.equal(pl2.piese[0].pret, "120");
+
+  // Testing repro (ac5): invented parts must not survive a shared stem.
+  {
+    const txt = "Hotel Continental, Nilfisk SC500 seria SN-998877, nu aspiră apa, am schimbat racleta, două ore manoperă, 35 km";
+    const out = validateExtraction(
+      { ...blank, client: "Hotel Continental", modelUtilaj: "Nilfisk SC500",
+        piese: [
+          { denumire: "Motor aspirație", cod: "", cantitate: "2", pret: "" },
+          { denumire: "Racletă spate", cod: "", cantitate: "2", pret: "" },
+          { denumire: "Hotel racleta", cod: "", cantitate: "2", pret: "" },
+          { denumire: "Continental motor", cod: "", cantitate: "2", pret: "" },
+          { denumire: "Filtru HEPA", cod: "", cantitate: "1", pret: "" },
+          { denumire: "Racletă", cod: "", cantitate: "2", pret: "" },
+        ] },
+      txt
+    )!;
+    assert.deepEqual(out.piese.map((p) => p.denumire), ["Racletă"], "only the part actually named survives");
+    assert.equal(out.piese[0].cantitate, "1", "'două ore' is not the part quantity");
+    const q = validateExtraction({ ...blank, piese: [{ denumire: "Perie cilindrică", cod: "", cantitate: "2", pret: "" }, { denumire: "Filtru HEPA", cod: "", cantitate: "3", pret: "" }] },
+      "am schimbat două perii cilindrice, filtru HEPA x3")!;
+    assert.deepEqual(q.piese.map((p) => p.cantitate), ["2", "3"], "stated part quantities kept");
+    const en = validateExtraction({ ...blank, piese: [{ denumire: "Squeegee blade", cod: "", cantitate: "2", pret: "" }] }, "replaced two squeegee blades")!;
+    assert.equal(en.piese[0].cantitate, "2");
+    // 1 needs a digit, a real "one" word, or article + unit.
+    const one = (t: string) => numbersInText(t).has(1);
+    assert.ok(!one("nu aspiră apa, o problemă la motor"), "RO article 'o' alone ≠ 1");
+    assert.ok(!one("replaced a blade"), "EN article 'a' alone ≠ 1");
+    assert.ok(!one("un client nou"), "RO 'un' alone ≠ 1");
+    assert.ok(one("o oră manoperă") && one("an hour of labour") && one("un km") && one("1 h") && one("one hour"));
+    assert.ok(numbersInText("an hour and a half").has(1.5));
+    const h = validateExtraction({ ...blank, manoperaOre: "1", deplasareKm: "1", oreFunctionare: "1" }, "a fost o problemă, am schimbat o racletă")!;
+    assert.deepEqual([h.manoperaOre, h.deplasareKm, h.oreFunctionare], ["", "", ""], "1 via articles dropped");
+  }
 
   console.log("smoke-voice-extract: mocked OK");
 }

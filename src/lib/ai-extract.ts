@@ -238,12 +238,12 @@ function fuzzyContains(srcNorm: string, name: string): boolean {
 
 const UNITS: Record<string, number> = {
   // ro (diacritics stripped by norm)
-  zero: 0, unu: 1, una: 1, un: 1, o: 1, doi: 2, doua: 2, trei: 3, patru: 4, cinci: 5,
+  zero: 0, unu: 1, doi: 2, doua: 2, trei: 3, patru: 4, cinci: 5,
   sase: 6, sapte: 7, opt: 8, noua: 9, zece: 10, unsprezece: 11, doisprezece: 12,
   douasprezece: 12, treisprezece: 13, paisprezece: 14, cincisprezece: 15,
   saisprezece: 16, saptesprezece: 17, optsprezece: 18, nouasprezece: 19,
   // en
-  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7,
   eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12, thirteen: 13, fourteen: 14,
   fifteen: 15, sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
   // pl
@@ -261,6 +261,13 @@ const TENS: Record<string, number> = {
   szescdziesiat: 60, siedemdziesiat: 70, osiemdziesiat: 80, dziewiecdziesiat: 90, sto: 100,
 };
 const HALF = new Set(["jumatate", "half", "pol"]);
+/**
+ * Words that mean "one" but are also articles (ro o/un/una, en a/an): they
+ * count as 1 only right before a unit ("o oră", "an hour", "un km").
+ */
+const ARTICLE_ONE = new Set(["o", "un", "una", "a", "an"]);
+const UNIT_WORD =
+  /^(?:ora|ore|orei|h|hr|hrs|hour|hours|godz|godzin[a-z]*|km|kilometr[a-z]*|kilometer[a-z]*|kilometre[a-z]*|buc|bucata|bucati|piece|pieces|pc|pcs|szt|sztuk[a-z]*|eur|euro|lei|ron|zl|pln|gbp)$/;
 const ONE_AND_HALF = new Set(["poltora", "poltorej"]);
 const JOIN = new Set(["si", "and", "i"]);
 
@@ -288,6 +295,9 @@ export function numbersInText(text: string): Set<number> {
       }
     } else if (UNITS[w] !== undefined) {
       v = UNITS[w];
+    } else if (ARTICLE_ONE.has(w)) {
+      if (!UNIT_WORD.test(toks[i + 1] || "")) continue;
+      v = 1;
     } else if (/^\d+(\.\d+)?$/.test(w)) {
       v = Number(w);
     }
@@ -308,6 +318,90 @@ function traceableNumber(value: string, nums: Set<number>): string {
   if (!value) return "";
   const n = Number(value);
   return Array.from(nums).some((x) => Math.abs(x - n) < 1e-9) ? value : "";
+}
+
+const STOP = new Set([
+  "de", "la", "si", "cu", "pe", "din", "pentru", "al", "ale", "lui", "nou", "noua",
+  "the", "of", "for", "and", "with", "new", "to", "in", "on",
+  "i", "z", "do", "na", "dla", "ze", "od", "nowy", "nowa",
+]);
+/** Generic company words that never identify a client on their own. */
+const GENERIC_CLIENT = new Set([
+  "hotel", "hotelul", "sc", "srl", "sa", "sp", "oo", "ltd", "limited", "plc", "inc",
+  "firma", "company", "grup", "group", "centru", "center", "centre", "restaurant",
+]);
+
+function sigWords(s: string): string[] {
+  return norm(s)
+    .split(" ")
+    .filter((t) => t && !STOP.has(t) && (t.length >= 3 || /\d/.test(t)));
+}
+
+/** Light stemming: same word modulo a short inflection ending (racletă/racleta, szczotkę/szczotka). */
+function stemEq(a: string, b: string): boolean {
+  if (a === b) return true;
+  const n = Math.min(a.length, b.length);
+  if (n < 3) return false;
+  let p = 0;
+  while (p < n && a[p] === b[p]) p++;
+  if (n <= 4) return p >= n - 1 && Math.abs(a.length - b.length) <= 1;
+  return p >= Math.max(4, n - 2) && Math.abs(a.length - b.length) <= 3;
+}
+
+/**
+ * Part name must be grounded in the text: its head noun (first significant
+ * word) AND at least two thirds of its significant words must occur (stem
+ * match). Words that only occur inside the client / model name don't count,
+ * so "Hotel racleta" or "Continental motor" can't ride on the client.
+ */
+export function partTraced(name: string, source: string, exclude: string[] = []): boolean {
+  const words = sigWords(name);
+  if (!words.length) return false;
+  const ex = new Set(exclude.flatMap((e) => sigWords(e)));
+  const src = sigWords(source).filter((t) => !ex.has(t));
+  const hit = (w: string) => src.some((t) => stemEq(w, t));
+  if (!hit(words[0])) return false;
+  const hits = words.filter(hit).length;
+  return hits * 3 >= words.length * 2;
+}
+
+/**
+ * Client name must be grounded: every distinctive word (not hotel/SRL/…)
+ * occurs in the text (one miss allowed for 4+ words). A catalog hint the
+ * text doesn't name can't be grabbed.
+ */
+export function clientTraced(name: string, source: string): boolean {
+  if (!name) return true;
+  const words = sigWords(name).filter((w) => !GENERIC_CLIENT.has(w));
+  const src = sigWords(source);
+  if (!words.length) return sigWords(name).some((w) => src.some((t) => stemEq(w, t)));
+  const hits = words.filter((w) => src.some((t) => stemEq(w, t))).length;
+  return hits >= words.length - (words.length >= 4 ? 1 : 0);
+}
+
+/**
+ * Quantity stated for a part: a number right before a mention of the part
+ * (≤3 words: "două perii", "two blades", "dwie szczotki") or "x2"/"2 buc"
+ * right after it. A number elsewhere ("două ore") is not its quantity.
+ */
+export function partQuantityInText(name: string, source: string): Set<number> {
+  const out = new Set<number>();
+  const words = sigWords(name);
+  if (!words.length) return out;
+  const toks = norm(source).split(" ");
+  toks.forEach((t, i) => {
+    if (!stemEq(words[0], t) && !words.some((w) => stemEq(w, t))) return;
+    numbersInText(toks.slice(Math.max(0, i - 3), i).join(" ")).forEach((n) => out.add(n));
+    const after = toks.slice(i + 1, i + 5);
+    for (let k = 0; k < after.length; k++) {
+      const m = /^x(\d+)$/.exec(after[k]);
+      if (m) out.add(Number(m[1]));
+      if (after[k] === "x" && /^\d+$/.test(after[k + 1] || "")) out.add(Number(after[k + 1]));
+      if (/^\d+$/.test(after[k]) && /^(?:buc|bucati|pcs|pc|szt|sztuki|pieces)$/.test(after[k + 1] || ""))
+        out.add(Number(after[k]));
+    }
+  });
+  return out;
 }
 
 /** Meaningful words of a value must appear (as a stem) in the source text. */
@@ -352,7 +446,7 @@ export function validateExtraction(
       if (!p || typeof p !== "object") continue;
       const o = p as Record<string, unknown>;
       const denumire = str(o.denumire, 120);
-      if (!denumire || !sharesWords(denumire, sourceText)) continue;
+      if (!denumire || !partTraced(denumire, sourceText, [client, modelUtilaj])) continue;
       let cod = str(o.cod, 60);
       if (cod && !compact(sourceText).includes(compact(cod))) cod = "";
       piese.push({
@@ -361,7 +455,7 @@ export function validateExtraction(
         // A part named without a count is one piece; any other count must be stated.
         cantitate: (() => {
           const q = numStr(o.cantitate);
-          return !q || q === "1" ? "1" : traceableNumber(q, nums) || "1";
+          return !q || q === "1" ? "1" : traceableNumber(q, partQuantityInText(denumire, sourceText)) || "1";
         })(),
         pret: traceableNumber(numStr(o.pret), nums),
       });
@@ -369,7 +463,8 @@ export function validateExtraction(
   }
 
   return {
-    client: grounded(client, sourceText, hints?.clients) ? client : "",
+    // Grounded AND every distinctive word named in the text (no grabbed catalog hint).
+    client: grounded(client, sourceText, hints?.clients) && clientTraced(client, sourceText) ? client : "",
     locatie: (() => {
       const l = str(r.locatie, 160);
       return grounded(l, sourceText) ? l : "";
