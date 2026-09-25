@@ -1,6 +1,6 @@
 import type { ContentLocale, Fisa, FirmSettings } from "./types";
 import { resolveContentLocale } from "./types";
-import { formatDateForLocale } from "./date-format";
+import { formatDateForLocale, localIsoDate } from "./date-format";
 
 /** Short message sent with the PDF — always in the fișă's contentLocale. */
 export function clientMessage(fisa: Fisa, settings: Pick<FirmSettings, "companyName">): string {
@@ -8,7 +8,7 @@ export function clientMessage(fisa: Fisa, settings: Pick<FirmSettings, "companyN
   const nr = fisa.nrFisa?.trim() || fisa.id.slice(0, 8);
   const date =
     formatDateForLocale(fisa.dataInterventiei, loc) ||
-    formatDateForLocale(new Date().toISOString().slice(0, 10), loc);
+    formatDateForLocale(localIsoDate(), loc);
   const firm = settings.companyName?.trim();
   const sig = firm ? ` — ${firm}` : "";
   if (loc === "en")
@@ -36,6 +36,30 @@ export type SendOutcome = "shared" | "fallback" | "blocked" | "cancelled";
 
 /** Minimal window handle (pre-opened synchronously on the tap). */
 export type WinLike = { location: { href: string }; close: () => void; closed?: boolean; opener?: unknown };
+
+/**
+ * Open url in a new window and cut window.opener afterwards. Deliberately NOT
+ * the "noopener" feature: with it window.open() always returns null, so a
+ * successful open looked "blocked". Returns false only when really blocked.
+ */
+export function openWindowNoOpener(
+  open: (url: string, target: string) => WinLike | null,
+  url: string
+): boolean {
+  let w: WinLike | null = null;
+  try {
+    w = open(url, "_blank");
+  } catch {
+    return false;
+  }
+  if (!w) return false;
+  try {
+    w.opener = null;
+  } catch {
+    /* already cross-origin */
+  }
+  return true;
+}
 
 /** Can this browser share a PDF file via the OS share sheet? (sync) */
 export function canShareFiles(nav: Navigator | undefined): boolean {

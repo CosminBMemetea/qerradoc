@@ -8,6 +8,7 @@ import { useI18n } from "@/lib/i18n";
 import {
   canSendToClient,
   clientMessage,
+  openWindowNoOpener,
   preopenFallbackWindow,
   sendPdfToClient,
   waLink,
@@ -100,7 +101,7 @@ export default function SendToClient({
           a.click();
           window.setTimeout(() => URL.revokeObjectURL(url), 4000);
         },
-        open: (url) => !!window.open(url, "_blank", "noopener"),
+        open: (url) => openWindowNoOpener((u, t) => window.open(u, t) as WinLike | null, url),
         win,
       });
       if (outcome === "cancelled") return;

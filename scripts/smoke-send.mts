@@ -8,6 +8,7 @@ import { emptyFisa } from "../src/lib/types.ts";
 import {
   canSendToClient,
   clientMessage,
+  openWindowNoOpener,
   preopenFallbackWindow,
   sendPdfToClient,
   waLink,
@@ -109,6 +110,34 @@ function harness(nav: Partial<Navigator> | undefined) {
   // Blocked (no pre-opened window and window.open returns null) → "blocked".
   const h4 = harness({ canShare: () => false });
   assert.equal(await sendPdfToClient(blob, "f.pdf", "t", { ...h4.deps, open: () => false }), "blocked");
+}
+// 6. ac5 bug: window.open without "noopener" → a real handle, so a successful
+//    open is never reported as blocked; opener cut afterwards.
+{
+  const w = { location: { href: "" }, opener: {} as unknown, close() {} };
+  const seen: string[] = [];
+  assert.equal(openWindowNoOpener((u, t) => { seen.push(`${u}|${t}`); return w as WinLike; }, "https://wa.me/?text=x"), true);
+  assert.deepEqual(seen, ["https://wa.me/?text=x|_blank"], "no 'noopener' feature string");
+  assert.equal(w.opener, null);
+  assert.equal(openWindowNoOpener(() => null, "u"), false, "really blocked → false");
+  assert.equal(openWindowNoOpener(() => { throw new Error("x"); }, "u"), false);
+  // File-share device, share() rejects NotAllowedError → WhatsApp opened exactly once, not "blocked".
+  let opens = 0;
+  const nav = { canShare: () => true, share: async () => { throw Object.assign(new Error("x"), { name: "NotAllowedError" }); } } as unknown as Navigator;
+  const pre = preopenFallbackWindow(nav, () => { opens++; return w as WinLike; });
+  assert.equal(pre, null, "nothing pre-opened on a share-capable device");
+  const out = await sendPdfToClient(blob, "f.pdf", "t", {
+    nav, win: pre, download: () => {},
+    open: (u) => openWindowNoOpener(() => { opens++; return { location: { href: u }, opener: {}, close() {} }; }, u),
+  });
+  assert.equal(out, "fallback");
+  assert.equal(opens, 1, "WhatsApp opened exactly once");
+  // Desktop with pre-opened window → deps.open never called (exactly one window).
+  let opens2 = 0;
+  const w2 = { location: { href: "about:blank" }, opener: {} as unknown, closed: false, close() {} };
+  const pre2 = preopenFallbackWindow({ canShare: () => false } as unknown as Navigator, () => { opens2++; return w2 as WinLike; });
+  assert.equal(await sendPdfToClient(blob, "f.pdf", "t", { nav: { canShare: () => false } as unknown as Navigator, win: pre2, download: () => {}, open: () => { opens2++; return true; } }), "fallback");
+  assert.equal(opens2, 1);
 }
 
 // Backup keeps sentAt + aiFilled; junk dropped.
