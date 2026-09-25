@@ -8,7 +8,10 @@ import { useI18n } from "@/lib/i18n";
 import {
   canSendToClient,
   clientMessage,
+  preopenFallbackWindow,
   sendPdfToClient,
+  waLink,
+  type WinLike,
 } from "@/lib/send-to-client";
 
 /** Content that affects the PDF (ignores bookkeeping fields). */
@@ -36,6 +39,7 @@ export default function SendToClient({
   const [settings, setSettings] = useState<FirmSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [blockedUrl, setBlockedUrl] = useState("");
   const ready = useRef<{ key: string; blob: Blob; name: string } | null>(null);
   const visible = canSendToClient(fisa);
 
@@ -72,8 +76,15 @@ export default function SendToClient({
 
   async function onSend() {
     if (busy) return;
+    // Synchronously, on the tap: without a file share sheet (desktop) open the
+    // WhatsApp window now — after the awaits below a popup blocker would stop it.
+    const win = preopenFallbackWindow(
+      typeof navigator !== "undefined" ? navigator : undefined,
+      () => window.open("about:blank", "_blank") as WinLike | null
+    );
     setBusy(true);
     setMsg("");
+    setBlockedUrl("");
     try {
       const s = settings ?? (await getSettings());
       const key = pdfKey(fisa);
@@ -89,12 +100,17 @@ export default function SendToClient({
           a.click();
           window.setTimeout(() => URL.revokeObjectURL(url), 4000);
         },
-        open: (url) => window.open(url, "_blank", "noopener"),
+        open: (url) => !!window.open(url, "_blank", "noopener"),
+        win,
       });
       if (outcome === "cancelled") return;
       await persist({ ...saved, sentAt: new Date().toISOString() });
-      setMsg(outcome === "shared" ? t("send.done") : t("send.fallback"));
+      if (outcome === "blocked") setBlockedUrl(waLink(clientMessage(saved, s)));
+      setMsg(
+        outcome === "shared" ? t("send.done") : outcome === "blocked" ? t("send.blocked") : t("send.fallback")
+      );
     } catch {
+      win?.close();
       setMsg(t("send.error"));
     } finally {
       setBusy(false);
@@ -143,6 +159,17 @@ export default function SendToClient({
         <p role="status" className="text-center text-sm text-muted">
           {msg}
         </p>
+      )}
+      {blockedUrl && (
+        <a
+          href={blockedUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="send-open-whatsapp"
+          className="block text-center text-sm font-semibold text-indigo-700 dark:text-indigo-300 underline"
+        >
+          {t("send.openWhatsApp")}
+        </a>
       )}
     </div>
   );
