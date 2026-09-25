@@ -3,82 +3,28 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import Sheet from "./Sheet";
 import { clearSession, getSession } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 
-function IconList({ active }: { active: boolean }) {
+function MenuIcon({ d }: { d: string }) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        opacity={active ? 1 : 0.85}
-      />
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={d} />
     </svg>
   );
 }
 
-function IconPlus({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 5v14M5 12h14"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        opacity={active ? 1 : 0.85}
-      />
-    </svg>
-  );
-}
-
-function IconSettings({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle
-        cx="12"
-        cy="12"
-        r="3"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        opacity={active ? 1 : 0.85}
-      />
-      <path
-        d="M12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        opacity={active ? 1 : 0.85}
-      />
-    </svg>
-  );
-}
-
-function IconKey({ active }: { active: boolean }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle
-        cx="8"
-        cy="14"
-        r="3.25"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        opacity={active ? 1 : 0.85}
-      />
-      <path
-        d="M10.5 12.5 20 3m0 0h-3.5M20 3v3.5"
-        stroke="currentColor"
-        strokeWidth="1.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity={active ? 1 : 0.85}
-      />
-    </svg>
-  );
-}
+const ICONS = {
+  settings:
+    "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2.5v2M12 19.5v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2.5 12h2M19.5 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41",
+  catalog: "M4 5h16M4 12h16M4 19h10",
+  backup: "M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2",
+  guide: "M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2zM4 21V5",
+  license: "M10.5 12.5 20 3m0 0h-3.5M20 3v3.5M8 17.25a3.25 3.25 0 1 0 0-6.5 3.25 3.25 0 0 0 0 6.5z",
+  logout: "M15 17l5-5-5-5M20 12H9M12 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6",
+};
 
 export default function AppShell({
   children,
@@ -96,6 +42,7 @@ export default function AppShell({
   const { t } = useI18n();
   const { theme, toggleTheme } = useTheme();
   const [tech, setTech] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -107,12 +54,15 @@ export default function AppShell({
     });
   }, [pathname, router]);
 
-  const nav = [
-    { href: "/fise", label: t("nav.fise"), Icon: IconList },
-    { href: "/fise/nou", label: t("nav.new"), Icon: IconPlus },
-    { href: "/setari", label: t("nav.settings"), Icon: IconSettings },
-    { href: "/licenta", label: t("nav.license"), Icon: IconKey },
+  const menu = [
+    { href: "/setari", label: t("nav.settings"), icon: ICONS.settings },
+    { href: "/setari#catalog", label: t("menu.catalog"), icon: ICONS.catalog },
+    { href: "/setari#backup", label: t("menu.backup"), icon: ICONS.backup },
+    { href: "/ghid", label: t("nav.guide"), icon: ICONS.guide },
+    { href: "/licenta", label: t("nav.license"), icon: ICONS.license },
   ];
+  const menuItemCls =
+    "flex items-center gap-3 w-full min-h-[52px] px-3 rounded-xl text-[15px] font-medium text-foreground hover:bg-stone-100 dark:hover:bg-stone-800 active:bg-stone-100 dark:active:bg-stone-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60 transition";
 
   return (
     <div className="min-h-dvh flex flex-col bg-background text-foreground max-w-lg mx-auto">
@@ -149,13 +99,6 @@ export default function AppShell({
           </div>
           {showNav && (
             <div className="flex items-center gap-1.5">
-              <Link
-                href="/ghid"
-                className="text-xs font-medium text-stone-600 dark:text-stone-300 px-2.5 py-2 rounded-xl border border-border bg-card active:bg-stone-50 dark:active:bg-stone-800 min-h-[40px] inline-flex items-center"
-                aria-label={t("nav.guide")}
-              >
-                {t("nav.guide")}
-              </Link>
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -167,61 +110,56 @@ export default function AppShell({
               </button>
               <button
                 type="button"
-                className="text-xs font-medium text-stone-600 dark:text-stone-300 px-3 py-2 rounded-xl border border-border bg-card active:bg-stone-50 dark:active:bg-stone-800 min-h-[40px]"
-                onClick={async () => {
-                  await clearSession();
-                  router.replace("/login");
-                }}
+                onClick={() => setMenuOpen(true)}
+                className="min-h-[40px] min-w-[40px] inline-flex items-center justify-center rounded-xl border border-border bg-card text-stone-600 dark:text-stone-300 active:bg-stone-50 dark:active:bg-stone-800"
+                aria-label={t("menu.open")}
+                aria-haspopup="dialog"
+                aria-expanded={menuOpen}
+                data-testid="app-menu-button"
               >
-                {t("nav.logout")}
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="1.8" />
+                  <circle cx="12" cy="12" r="1.8" />
+                  <circle cx="19" cy="12" r="1.8" />
+                </svg>
               </button>
             </div>
           )}
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-5 pb-28">{children}</main>
+      <main className="flex-1 px-4 py-5 pb-12">{children}</main>
 
-      {showNav && (
-        <nav className="fixed bottom-0 left-0 right-0 z-20 bg-card/95 backdrop-blur-md border-t border-border safe-bottom">
-          <div className="max-w-lg mx-auto grid grid-cols-4 px-1">
-            {nav.map((n) => {
-              const active =
-                pathname === n.href ||
-                (n.href !== "/fise" && pathname.startsWith(n.href));
-              const Icon = n.Icon;
-              return (
-                <Link
-                  key={n.href}
-                  href={n.href}
-                  className={`flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px] text-[11px] font-medium rounded-xl mx-0.5 transition ${
-                    active
-                      ? "text-indigo-600 dark:text-indigo-400"
-                      : "text-stone-500 dark:text-stone-400"
-                  }`}
-                >
-                  <span
-                    className={`inline-flex items-center justify-center rounded-full px-3 py-1 ${
-                      active ? "bg-indigo-50 dark:bg-indigo-950/60" : ""
-                    }`}
-                  >
-                    <Icon active={active} />
-                  </span>
-                  <span
-                    className={
-                      active
-                        ? "border-b-2 border-indigo-600 dark:border-indigo-400 pb-0.5"
-                        : "pb-0.5 border-b-2 border-transparent"
-                    }
-                  >
-                    {n.label}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
+      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t("menu.open")} testId="app-menu">
+        <nav className="space-y-1">
+          {menu.map((m) => (
+            <Link
+              key={m.href}
+              href={m.href}
+              className={menuItemCls}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span className="text-indigo-600 dark:text-indigo-300">
+                <MenuIcon d={m.icon} />
+              </span>
+              {m.label}
+            </Link>
+          ))}
+          <div className="border-t border-border my-2" />
+          <button
+            type="button"
+            className={`${menuItemCls} !text-red-700 dark:!text-red-300`}
+            onClick={async () => {
+              setMenuOpen(false);
+              await clearSession();
+              router.replace("/login");
+            }}
+          >
+            <MenuIcon d={ICONS.logout} />
+            {t("nav.logout")}
+          </button>
         </nav>
-      )}
+      </Sheet>
     </div>
   );
 }

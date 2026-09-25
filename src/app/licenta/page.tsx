@@ -58,7 +58,7 @@ export default function LicentaPage() {
     locale === "en" ? "en-US" : locale === "pl" ? "pl-PL" : "ro-RO";
 
   return (
-    <AppShell title={t("license.title")}>
+    <AppShell title={t("license.title")} backHref="/fise">
       <div className="qf-card p-5 mb-5">
         <p className="text-sm text-muted leading-relaxed">
           {t("license.pricing")}

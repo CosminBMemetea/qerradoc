@@ -353,6 +353,20 @@ const ro: Dict = {
   "offline.desc":
     "Nu există conexiune. Fișele salvate local rămân disponibile după reconectare.",
   "offline.retry": "Reîncearcă",
+  "home.newSub": "Vorbește, poză sau Excel",
+  "home.newHow": "Cum începi fișa?",
+  "home.newSpeak": "Vorbește",
+  "home.newSpeakDesc": "Spune fișa într-o frază — câmpurile se completează singure",
+  "home.newPhoto": "Poză",
+  "home.newPhotoDesc": "Fotografiază utilajul sau plăcuța",
+  "home.newExcel": "Excel",
+  "home.newExcelDesc": "Importă fișa completată de client",
+  "home.newText": "Scrie sau lipește text (WhatsApp)",
+  "home.demos": "Exemple demo",
+  "menu.open": "Meniu",
+  "menu.catalog": "Catalog clienți și utilaje",
+  "menu.backup": "Backup și restaurare",
+  "menu.close": "Închide",
 };
 
 const en: Dict = {
@@ -669,6 +683,20 @@ const en: Dict = {
   "offline.desc":
     "No connection. Locally saved sheets remain available after reconnecting.",
   "offline.retry": "Retry",
+  "home.newSub": "Speak, photo or Excel",
+  "home.newHow": "How do you want to start?",
+  "home.newSpeak": "Speak",
+  "home.newSpeakDesc": "Say the job in one sentence — fields fill themselves",
+  "home.newPhoto": "Photo",
+  "home.newPhotoDesc": "Snap the machine or its rating plate",
+  "home.newExcel": "Excel",
+  "home.newExcelDesc": "Import the client's filled-in sheet",
+  "home.newText": "Type or paste text (WhatsApp)",
+  "home.demos": "Demo examples",
+  "menu.open": "Menu",
+  "menu.catalog": "Clients & equipment catalog",
+  "menu.backup": "Backup & restore",
+  "menu.close": "Close",
 };
 
 const pl: Dict = {
@@ -987,6 +1015,20 @@ const pl: Dict = {
   "offline.desc":
     "Brak połączenia. Lokalnie zapisane karty pozostaną dostępne po ponownym połączeniu.",
   "offline.retry": "Spróbuj ponownie",
+  "home.newSub": "Mów, zdjęcie lub Excel",
+  "home.newHow": "Jak chcesz zacząć?",
+  "home.newSpeak": "Mów",
+  "home.newSpeakDesc": "Powiedz zlecenie jednym zdaniem — pola wypełnią się same",
+  "home.newPhoto": "Zdjęcie",
+  "home.newPhotoDesc": "Zrób zdjęcie maszyny lub tabliczki",
+  "home.newExcel": "Excel",
+  "home.newExcelDesc": "Importuj kartę wypełnioną przez klienta",
+  "home.newText": "Wpisz lub wklej tekst (WhatsApp)",
+  "home.demos": "Przykłady demo",
+  "menu.open": "Menu",
+  "menu.catalog": "Katalog klientów i maszyn",
+  "menu.backup": "Kopia zapasowa i przywracanie",
+  "menu.close": "Zamknij",
 };
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };

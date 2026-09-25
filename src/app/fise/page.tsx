@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
+import NewFisaSheet from "@/components/NewFisaSheet";
 import { listFise, getSession } from "@/lib/db";
 import { seedDemoFisa } from "@/lib/seed";
 import { loadDemo } from "@/lib/demos";
@@ -17,6 +18,7 @@ export default function FiseListPage() {
   const [fise, setFise] = useState<Fisa[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
 
   async function reload() {
     setLoading(true);
@@ -50,43 +52,25 @@ export default function FiseListPage() {
 
   return (
     <AppShell title={t("fise.title")}>
-      <div className="space-y-3 mb-6">
-        <BigButton href="/fise/nou" variant="primary">
-          {t("fise.new")}
-        </BigButton>
-        <BigButton variant="secondary" onClick={onSeed} disabled={seeding}>
-          {t("fise.seed")}
-        </BigButton>
-      </div>
-
-      <div className="mb-6">
-        <h2 className="text-sm font-semibold tracking-wide uppercase text-stone-400 dark:text-stone-500 mb-3">
-          {t("fise.demosTitle")}
-        </h2>
-        <div className="space-y-2.5">
-          <BigButton
-            variant="secondary"
-            onClick={() => onDemo("curatenie")}
-            disabled={seeding}
-          >
-            {t("fise.demoCuratenie")}
-          </BigButton>
-          <BigButton
-            variant="secondary"
-            onClick={() => onDemo("tamplarie")}
-            disabled={seeding}
-          >
-            {t("fise.demoTamplarie")}
-          </BigButton>
-          <BigButton
-            variant="secondary"
-            onClick={() => onDemo("stoma")}
-            disabled={seeding}
-          >
-            {t("fise.demoStoma")}
-          </BigButton>
-        </div>
-      </div>
+      <button
+        type="button"
+        onClick={() => setNewOpen(true)}
+        aria-haspopup="dialog"
+        aria-expanded={newOpen}
+        data-testid="big-new-fisa"
+        className="group w-full flex items-center gap-4 rounded-3xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white px-5 py-5 min-h-[88px] shadow-lg shadow-indigo-600/25 dark:shadow-indigo-950/60 border border-indigo-700/30 transition active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-stone-900 mb-7"
+      >
+        <span className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/15 shrink-0">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </span>
+        <span className="text-left min-w-0">
+          <span className="block text-xl font-semibold tracking-tight">{t("fise.new")}</span>
+          <span className="block text-sm text-indigo-100 mt-0.5">{t("home.newSub")}</span>
+        </span>
+      </button>
+      <NewFisaSheet open={newOpen} onClose={() => setNewOpen(false)} />
 
       {loading ? (
         <p className="text-muted text-center py-10">{t("app.loadingShort")}</p>
@@ -100,7 +84,7 @@ export default function FiseListPage() {
           </p>
           <div className="mt-5 space-y-2.5 text-left">
             <BigButton
-              variant="primary"
+              variant="secondary"
               onClick={() => onDemo("curatenie")}
               disabled={seeding}
             >
@@ -108,9 +92,6 @@ export default function FiseListPage() {
             </BigButton>
             <BigButton href="/ghid" variant="secondary">
               {t("fise.emptyCtaGuide")}
-            </BigButton>
-            <BigButton href="/fise/nou" variant="secondary">
-              {t("fise.emptyCtaNew")}
             </BigButton>
           </div>
         </div>
@@ -157,6 +138,26 @@ export default function FiseListPage() {
           ))}
         </ul>
       )}
+      <details className="mt-8 group" data-testid="home-demos">
+        <summary className="list-none cursor-pointer select-none inline-flex items-center gap-1.5 min-h-[44px] text-sm font-medium text-muted hover:text-foreground">
+          <span className="transition group-open:rotate-90" aria-hidden="true">›</span>
+          {t("home.demos")}
+        </summary>
+        <div className="space-y-2.5 mt-2">
+          <BigButton variant="secondary" onClick={onSeed} disabled={seeding}>
+            {t("fise.seed")}
+          </BigButton>
+          <BigButton variant="secondary" onClick={() => onDemo("curatenie")} disabled={seeding}>
+            {t("fise.demoCuratenie")}
+          </BigButton>
+          <BigButton variant="secondary" onClick={() => onDemo("tamplarie")} disabled={seeding}>
+            {t("fise.demoTamplarie")}
+          </BigButton>
+          <BigButton variant="secondary" onClick={() => onDemo("stoma")} disabled={seeding}>
+            {t("fise.demoStoma")}
+          </BigButton>
+        </div>
+      </details>
     </AppShell>
   );
 }

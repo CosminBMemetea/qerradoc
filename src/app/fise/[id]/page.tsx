@@ -111,7 +111,7 @@ function EditInner() {
       )}
       <FisaForm fisa={fisa} onChange={setFisa} />
 
-      <div className="sticky bottom-20 mt-6 space-y-3 bg-background/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1">
+      <div className="sticky bottom-0 mt-6 space-y-3 bg-background/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1">
         {saved && (
           <p className="text-center text-teal-800 dark:text-teal-300 font-medium text-sm">
             {t("edit.saved")}

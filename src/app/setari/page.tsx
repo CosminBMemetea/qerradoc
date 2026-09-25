@@ -66,6 +66,20 @@ export default function SetariPage() {
     setCatalogCounts({ clients: clients.length, equipment: equipment.length });
   }
 
+  // Deep links from the app menu: /setari#catalog, /setari#backup
+  useEffect(() => {
+    const go = () => {
+      const id = window.location.hash.slice(1);
+      if (!id) return;
+      window.setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 120);
+    };
+    go();
+    window.addEventListener("hashchange", go);
+    return () => window.removeEventListener("hashchange", go);
+  }, []);
+
   useEffect(() => {
     Promise.all([getSettings(), getSession()]).then(([settings, session]) => {
       const name = settings.companyName?.trim() || "";
@@ -217,7 +231,7 @@ export default function SetariPage() {
   }
 
   return (
-    <AppShell title={t("settings.title")}>
+    <AppShell title={t("settings.title")} backHref="/fise">
       <div className="qf-card p-5 mb-4">
         <h2 className="text-sm font-semibold text-foreground mb-3">
           {t("settings.appearance")}
@@ -379,7 +393,7 @@ export default function SetariPage() {
         {t("settings.save")}
       </BigButton>
 
-      <div className="qf-card p-5 mt-6 mb-2">
+      <div id="catalog" className="qf-card p-5 mt-6 mb-2 scroll-mt-24">
         <h2 className="text-sm font-semibold text-foreground mb-1">
           {t("settings.catalog")}
         </h2>
@@ -450,7 +464,7 @@ export default function SetariPage() {
         </div>
       </div>
 
-      <div className="qf-card p-5 mt-6 mb-2">
+      <div id="backup" className="qf-card p-5 mt-6 mb-2 scroll-mt-24">
         <h2 className="text-sm font-semibold text-foreground mb-1">
           {t("settings.backup")}
         </h2>

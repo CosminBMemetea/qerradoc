@@ -1,27 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import { useI18n } from "@/lib/i18n";
-import type { ExcelDraftError } from "@/lib/excel-draft-import";
-
-/** i18n key per import error (kept here so xlsx is only loaded on demand). */
-const EXCEL_ERR_KEYS: Record<ExcelDraftError, string> = {
-  numbers: "excel.errNumbers",
-  not_fisa: "excel.errNotFisa",
-  empty: "excel.errEmpty",
-  read_failed: "excel.errRead",
-};
+import { useExcelDraftImport, EXCEL_ERR_KEYS, EXCEL_ACCEPT } from "@/lib/use-excel-draft";
 
 export default function NewFisaChooser() {
   const { t } = useI18n();
-  const router = useRouter();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  // Stable error code — translated at render so a UI language switch re-localizes it.
-  const [excelErr, setExcelErr] = useState<ExcelDraftError | null>(null);
+  const { fileRef, busy, error: excelErr, onFile } = useExcelDraftImport();
 
   const cards = [
     {
@@ -43,27 +29,6 @@ export default function NewFisaChooser() {
       primary: false,
     },
   ];
-
-  async function onExcel(file: File | undefined) {
-    if (!file) return;
-    setExcelErr(null);
-    setBusy(true);
-    try {
-      // Lazy-load the xlsx parser only when a file is picked.
-      const { importExcelAsDraft } = await import("@/lib/excel-draft-import");
-      const res = await importExcelAsDraft(file);
-      if (!res.ok) {
-        setExcelErr(res.error);
-        return;
-      }
-      router.push(`/fise/${res.fisa.id}?review=1&from=excel`);
-    } catch {
-      setExcelErr("read_failed");
-    } finally {
-      setBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
 
   return (
     <AppShell title={t("new.title")} backHref="/fise">
@@ -101,10 +66,10 @@ export default function NewFisaChooser() {
         <input
           ref={fileRef}
           type="file"
-          accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+          accept={EXCEL_ACCEPT}
           className="hidden"
           data-testid="excel-draft-input"
-          onChange={(e) => onExcel(e.target.files?.[0])}
+          onChange={(e) => onFile(e.target.files?.[0])}
         />
         <button
           type="button"
