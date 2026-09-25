@@ -1,141 +1,266 @@
 import type { Fisa, TipFisa } from "./types";
 import { EMPTY_PIESE } from "./types";
 
-/** Heuristic parse of WhatsApp-style Romanian service messages into fișă fields. */
+/*
+ * Word-boundary helpers. JS `\b` is ASCII-only (it breaks on ă, ș, ł…) and
+ * lookbehind is not available on older iOS Safari, so we consume one
+ * non-letter char (or start of text) before a keyword instead.
+ */
+const WB = "(?:^|[^\\p{L}\\p{N}])";
+const WE = "(?![\\p{L}\\p{N}])";
+function kw(alts: string, tail: string, flags = "iu"): RegExp {
+  return new RegExp(`${WB}(?:${alts})${tail}`, flags);
+}
+function earliest(text: string, re: RegExp): number {
+  const m = re.exec(text);
+  return m ? m.index : -1;
+}
+
+/** Type words that explicitly name the intervention type (ro/en/pl). */
+const TIP_PATTERNS: [TipFisa, RegExp][] = [
+  ["Punere în funcțiune", kw("punere\\s+[îi]n\\s+func\\p{L}*|pif|commissioning|commissioned|uruchomieni\\p{L}*|uruchomienie", WE)],
+  ["Revizie", kw("reviz\\p{L}*|maintenance|servicing|periodic\\s+service|scheduled\\s+service|przegl[ąa]d\\p{L}*|konserwacj\\p{L}*", WE)],
+  ["Constatare", kw("constat\\p{L}*|inspection|inspected|diagnos\\p{L}*|assessment|ekspertyz\\p{L}*|diagnoz\\p{L}*|ogl[ęe]dzin\\p{L}*", WE)],
+  ["Reparație", kw("repara[tț]i\\p{L}*|reparat\\p{L}*|repair\\p{L}*|napraw\\p{L}*", WE)],
+];
+
+/**
+ * Intervention type only when the text names it explicitly
+ * (constatare / revizie / reparație / punere în funcțiune and en/pl
+ * equivalents). The earliest mention wins. Otherwise undefined, so the
+ * firm's default type applies.
+ */
+export function explicitTip(text: string): TipFisa | undefined {
+  let best: { tip: TipFisa; at: number } | undefined;
+  for (const [tip, re] of TIP_PATTERNS) {
+    const at = earliest(text || "", re);
+    if (at >= 0 && (!best || at < best.at)) best = { tip, at };
+  }
+  return best?.tip;
+}
+
+/**
+ * Type for a new sheet: an explicit type word in the text wins, then the
+ * firm default (pilot pack), then whatever the parser/LLM guessed.
+ */
+export function resolveNewSheetTip(
+  text: string,
+  firmDefault: TipFisa | undefined,
+  parsed: TipFisa | undefined
+): TipFisa | undefined {
+  return explicitTip(text) ?? firmDefault ?? parsed;
+}
+
+const NUM_WORDS: Record<string, number> = {
+  o: 1, un: 1, unu: 1, una: 1, one: 1, a: 1, an: 1, jeden: 1, jedna: 1, "jedną": 1,
+  "două": 2, doua: 2, doi: 2, two: 2, dwie: 2, dwa: 2,
+  trei: 3, three: 3, trzy: 3,
+  patru: 4, four: 4, cztery: 4,
+  cinci: 5, five: 5, "pięć": 5, piec: 5,
+  "șase": 6, sase: 6, six: 6, "sześć": 6,
+  "șapte": 7, sapte: 7, seven: 7, siedem: 7,
+  opt: 8, eight: 8, osiem: 8,
+  "nouă": 9, noua: 9, nine: 9, "dziewięć": 9,
+  zece: 10, ten: 10, "dziesięć": 10,
+};
+const NUM_WORD_ALTS = Object.keys(NUM_WORDS)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
+/** A number as digits or a (ro/en/pl) word, optionally "and a half". */
+const NUM = `(\\d+(?:[.,]\\d+)?|p[óo][łl]tor(?:a|ej)|(?:${NUM_WORD_ALTS})(?:\\s+(?:and\\s+a\\s+half|[șs]i\\s+jum[ăa]tate|i\\s+p[óo][łl]))?)${WE}`;
+
+function numValue(raw: string): string {
+  const s = raw.trim().toLowerCase();
+  if (/^\d/.test(s)) return s.replace(",", ".");
+  if (/^p[óo][łl]tor/.test(s)) return "1.5";
+  const half = /(?:half|jum[ăa]tate|p[óo][łl])$/.test(s);
+  const base = NUM_WORDS[s.split(/\s+/)[0]];
+  if (base === undefined) return "";
+  return String(half ? base + 0.5 : base);
+}
+
+function clean(v: string): string {
+  return v.replace(/\s+/g, " ").replace(/[.;:,\s]+$/, "").trim();
+}
+function capFirst(v: string): string {
+  return v ? v.charAt(0).toUpperCase() + v.slice(1) : v;
+}
+
+const BRANDS = "K[aä]rcher|Nilfisk|Tennant|IPC|Hako|Comac|Fimap|Taski|Numatic|Ghibli|Wetrok|Lavor";
+const SERIE_KW = "nr\\.?\\s*(?:de\\s*)?serie|num[ăa]r\\s+(?:de\\s+)?serie|numer\\s+seryjny|nr\\.?\\s*seryjny|seria|serie|serial(?:\\s+(?:no\\.?|number))?|s\\/n|sn";
+
+/**
+ * Heuristic parse of WhatsApp-style / dictated service messages (ro/en/pl)
+ * into fișă fields. Used offline or when the AI route is unavailable.
+ */
 export function parseWhatsAppText(text: string): Partial<Fisa> {
   const t = text.replace(/\r\n/g, "\n").trim();
   const lower = t.toLowerCase();
+  const segments = t.split(/[\n,;]+/).map((x) => x.trim()).filter(Boolean);
   const result: Partial<Fisa> = {
     reclamatie: t,
     piese: EMPTY_PIESE(),
   };
 
-  // Tip
-  if (/punere\s*[îi]n\s*func/i.test(t) || /\bpif\b/i.test(t)) {
-    result.tip = "Punere în funcțiune";
-  } else if (/revizie/i.test(t)) {
-    result.tip = "Revizie";
-  } else if (/constatare/i.test(t)) {
-    result.tip = "Constatare";
-  } else if (/repara[tț]ie|reparat|defect|stricat/i.test(t)) {
-    result.tip = "Reparație";
+  const tip = explicitTip(t);
+  if (tip) result.tip = tip;
+
+  // Client: keyword, else a leading "Proper Name" segment (2–5 capitalised words).
+  const clientKw = kw(
+    "client(?:ul)?|beneficiar(?:ul)?|customer|klient|pentru|pt\\.",
+    "\\s*[:\\-]?\\s*([^\\n,;]{3,60})"
+  ).exec(t);
+  if (clientKw && new RegExp("^[\\p{Lu}0-9]", "u").test(clientKw[1].trim())) {
+    result.client = clean(clientKw[1]);
+  } else if (segments[0]) {
+    const words = segments[0].split(/\s+/);
+    const brand = new RegExp(`^(?:${BRANDS})$`, "i");
+    if (
+      words.length >= 2 &&
+      words.length <= 5 &&
+      words.every((w) => new RegExp("^[\\p{Lu}0-9&]", "u").test(w)) &&
+      !words.some((w) => brand.test(w))
+    ) {
+      result.client = clean(segments[0]);
+    }
   }
 
-  // Client
-  const clientMatch =
-    t.match(/(?:client|beneficiar|pt\.?|pentru)\s*[:\-]?\s*([A-ZĂÂÎȘȚ][^\n,;]{2,40})/i) ||
-    t.match(/(?:la|de la)\s+(SC\s+[^\n,;]{2,40}|[A-ZĂÂÎȘȚ][a-zăâîșț]+(?:\s+[A-ZĂÂÎȘȚ][a-zăâîșț]+){0,3})/);
-  if (clientMatch) result.client = clientMatch[1].trim();
-
-  // Locație
-  const locMatch = t.match(
-    /(?:loca[tț]ie|adresa|adresă|sediu|la)\s*[:\-]?\s*([^\n]{5,60})/i
-  );
+  // Locație — explicit keyword only (no bare "la": it matched inside words).
+  const locMatch = kw(
+    "loca[tț]i[ea]|loca[tț]ia|adres[aă]|adres|address|site|sediu|sediul|lokalizacja|miejsce",
+    "\\s*[:\\-]?\\s+([^\\n,;]{3,60})"
+  ).exec(t);
   if (locMatch) {
-    const loc = locMatch[1].replace(/[,;].*$/, "").trim();
+    const loc = clean(locMatch[1]);
     if (loc.length > 3 && !/client/i.test(loc)) result.locatie = loc;
   }
 
-  // Model utilaj — brands + generic
-  const modelMatch = t.match(
-    /(?:model|utilaj|ma[sș]in[aă]|aspirator|scrubber|extractor|injector)\s*[:\-]?\s*([A-Za-z0-9ĂÂÎȘȚăâîșț\-\/\.\s]{2,40})/i
-  );
-  if (modelMatch) {
-    result.modelUtilaj = modelMatch[1].replace(/[,;\n].*$/, "").trim();
-  } else {
-    const brand = t.match(
-      /\b(K[aä]rcher|Nilfisk|Tennant|IPC|Hako|Comac|Fimap|Taski|Numatic|Ghibli)\s+([A-Za-z0-9\-\/]+)/i
-    );
-    if (brand) result.modelUtilaj = `${brand[1]} ${brand[2]}`.trim();
+  // Model utilaj — keyword, else brand + up to 3 model tokens.
+  const stopAtSerie = new RegExp(`\\s+(?:${SERIE_KW})${WE}.*$`, "iu");
+  const modelKw = kw(
+    "model|utilaj(?:ul)?|ma[sș]in[aă]|machine|urz[ąa]dzenie|aspirator|scrubber|extractor|injector",
+    "\\s*[:\\-]\\s*([^\\n,;]{2,40})"
+  ).exec(t);
+  const brandMatch = new RegExp(
+    `${WB}(${BRANDS})\\s+([A-Za-z0-9][A-Za-z0-9\\-\\/]*(?:\\s+[A-Z0-9][A-Za-z0-9\\-\\/]*){0,3})`,
+    "u"
+  ).exec(t);
+  if (modelKw) {
+    result.modelUtilaj = clean(modelKw[1].replace(stopAtSerie, ""));
+  } else if (brandMatch) {
+    result.modelUtilaj = clean(`${brandMatch[1]} ${brandMatch[2].replace(stopAtSerie, "")}`);
   }
 
-  // Serie
-  const serieMatch = t.match(
-    /(?:serie|serial|s\/n|sn|nr\.?\s*serie)\s*[:\-]?\s*([A-Z0-9\-]{4,30})/i
-  );
-  if (serieMatch) result.serie = serieMatch[1].trim();
+  // Serie — "seria SN-998877" → "SN-998877" (the keyword must be followed by
+  // a separator, so the "SN" of the value is never eaten as a keyword).
+  const serieMatch = kw(SERIE_KW, "(?:\\s*[:#]\\s*|\\s+)([A-Z0-9][A-Z0-9\\-\\/.]{3,29})", "iu").exec(t);
+  if (serieMatch && /\d/.test(serieMatch[1])) result.serie = clean(serieMatch[1]);
 
-  // Ore funcționare
-  const oreMatch = t.match(
-    /(?:ore|ore\s*func|contor|hours?)\s*[:\-]?\s*(\d[\d\.,]*)/i
-  );
+  // Ore funcționare (hour meter) — keyword followed by a number.
+  const oreMatch = kw(
+    "ore\\s*(?:de\\s*)?func\\p{L}*|ore|contor|hours?(?:\\s*meter)?|motogodzin\\p{L}*",
+    "\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)"
+  ).exec(t);
   if (oreMatch) result.oreFunctionare = oreMatch[1].replace(",", ".");
 
-  // Manoperă
-  const manMatch = t.match(
-    /(?:manoper[aă]|ore\s*lucru|timp)\s*[:\-]?\s*(\d[\d\.,]*)\s*(?:h|ore)?/i
-  );
-  if (manMatch) result.manoperaOre = manMatch[1].replace(",", ".");
+  // Manoperă — "manoperă 2", "Labour 1.5 h", "două ore manoperă", "dwie godziny robocizny".
+  const manBefore = kw("manoper[aă]|ore\\s*lucru|labou?r|robocizn\\p{L}*", `\\s*[:\\-]?\\s*${NUM}`).exec(t);
+  const manAfter = kw(
+    NUM.replace(WE, ""),
+    `\\s*(?:h|ore|or[ăa]|hours?|godzin\\p{L}*)${WE}\\s*(?:de\\s+)?(?:manoper\\p{L}*|labou?r|robocizn\\p{L}*|lucru|work)`
+  ).exec(t);
+  const man = manBefore?.[1] ?? manAfter?.[1];
+  if (man) {
+    const v = numValue(man);
+    if (v) result.manoperaOre = v;
+  }
 
-  // Deplasare km
-  const kmMatch = t.match(/(?:deplasare|km)\s*[:\-]?\s*(\d[\d\.,]*)\s*km?/i);
+  // Deplasare km.
+  const kmMatch =
+    kw("deplasare|travel|dojazd", `\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)`).exec(t) ||
+    new RegExp(`${WB}(\\d+(?:[.,]\\d+)?)\\s*km${WE}`, "iu").exec(t);
   if (kmMatch) {
     result.deplasareKm = kmMatch[1].replace(",", ".");
     result.deplasareDaNu = "DA";
-  } else if (/f[aă]r[aă]\s*deplasare|nu\s*deplas/i.test(lower)) {
+  } else if (/f[aă]r[aă]\s*deplasare|nu\s*deplas|no\s+travel|bez\s+dojazdu/i.test(lower)) {
     result.deplasareDaNu = "NU";
   }
 
   // Proprietar
-  const propMatch = t.match(/(?:proprietar|owner)\s*[:\-]?\s*([^\n,;]{2,40})/i);
-  if (propMatch) result.proprietar = propMatch[1].trim();
+  const propMatch = kw("proprietar|owner|w[łl]a[śs]ciciel", "\\s*[:\\-]?\\s*([^\\n,;]{2,40})").exec(t);
+  if (propMatch) result.proprietar = clean(propMatch[1]);
 
   // Data anunțării
-  const dataAnunt = t.match(
-    /(?:anun[tț]|reclamat|somat|apel)\s*(?:pe|din|la)?\s*(\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4})/i
-  );
+  const dataAnunt = kw(
+    "anun[tț]\\p{L}*|reclamat|sesizat|apel|reported|zg[łl]oszon\\p{L}*",
+    "\\s*(?:pe|din|la|on|dnia)?\\s*(\\d{1,2}[.\\/\\-]\\d{1,2}[.\\/\\-]\\d{2,4})"
+  ).exec(t);
   if (dataAnunt) result.dataAnuntarii = normalizeDate(dataAnunt[1]);
 
   // Data intervenției
-  const dataInt = t.match(
-    /(?:interven[tț]ie|azi|data)\s*[:\-]?\s*(\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4})/i
-  );
+  const dataInt = kw(
+    "interven[tț]\\p{L}*|azi|data|job|visit|wizyta",
+    "\\s*[:\\-]?\\s*(\\d{1,2}[.\\/\\-]\\d{1,2}[.\\/\\-]\\d{2,4})"
+  ).exec(t);
   if (dataInt) result.dataInterventiei = normalizeDate(dataInt[1]);
 
-  // Piese — lines like "filtru aer x2" or "cod ABC-123"
+  // Piese — (1) list lines under "Piese:/Parts:/Części:" or bullets,
+  //         (2) otherwise "am schimbat X și Y" / "replaced X and Y" / "wymieniłem X i Y".
   const piese = EMPTY_PIESE();
   let pi = 0;
-  const lines = t.split("\n");
-  for (const line of lines) {
-    if (pi >= 15) break;
-    const piesaMatch = line.match(
-      /(?:piesa?|material|filtru|curea|motor|pomp[aă]|furtun|perie|saci?|baterie|garnitur[aă])\s*[:\-]?\s*(.+)/i
-    );
-    const bullet = line.match(/^[\-\*•]\s*(.+)/);
-    const qtyMatch = line.match(/(.+?)\s+[xX×]\s*(\d+)/);
-    if (piesaMatch || (bullet && /piese|material/i.test(lower))) {
-      const den = (piesaMatch?.[1] || bullet?.[1] || "").trim();
-      if (den.length > 2) {
-        piese[pi] = {
-          nr: pi + 1,
-          denumire: den.replace(/\s+[xX×]\s*\d+.*/, "").slice(0, 80),
-          cod: (line.match(/\b([A-Z0-9]{2,}[\-][A-Z0-9\-]+)\b/) || [])[1] || "",
-          cantitate: qtyMatch?.[2] || "1",
-          pretEur: "",
-        };
-        pi++;
-      }
-    } else if (qtyMatch && /piese|material|schimb|înlocuit|inlocuit/i.test(lower)) {
-      piese[pi] = {
-        nr: pi + 1,
-        denumire: qtyMatch[1].trim().slice(0, 80),
-        cod: "",
-        cantitate: qtyMatch[2],
-        pretEur: "",
-      };
-      pi++;
+  const push = (denumire: string, cod = "", cantitate = "1") => {
+    const den = capFirst(clean(denumire)).slice(0, 80);
+    if (pi >= 15 || den.length < 3) return;
+    piese[pi] = { nr: pi + 1, denumire: den, cod, cantitate, pretEur: "" };
+    pi++;
+  };
+  let inList = false;
+  for (const line of t.split("\n")) {
+    const l = line.trim();
+    if (/^(?:piese|parts|cz[ęe][śs]ci|materiale?|materials?)\s*:?\s*$/i.test(l)) {
+      inList = true;
+      continue;
+    }
+    const bullet = l.match(/^[\-*•]\s*(.+)$/);
+    if (!bullet && !(inList && l)) {
+      if (inList && !l) inList = false;
+      continue;
+    }
+    if (!bullet && inList && new RegExp("^[\\p{L} ]+:", "u").test(l)) {
+      inList = false; // next "Label:" line ends the list
+      continue;
+    }
+    const body = bullet ? bullet[1] : l;
+    const qty = body.match(/\s[xX×]\s*(\d+)/)?.[1] || "1";
+    const cod = body.match(/(?:cod|code|kod)\s*[:\-]?\s*([A-Za-z0-9][\w.\-\/]*[A-Za-z0-9])/i)?.[1] || "";
+    const den = body.split(/\s[xX×]\s*\d+|\s(?:cod|code|kod)\s/i)[0];
+    push(den, cod, qty);
+  }
+  if (!pi) {
+    const swap = kw(
+      "am\\s+schimbat|am\\s+[îi]nlocuit|schimbat|[îi]nlocuit|replaced|changed|fitted|wymieni[łl]em|wymieniono|wymieniona|wymiana",
+      "\\s+([^\\n,;.]{3,120})"
+    ).exec(t);
+    if (swap) {
+      swap[1]
+        .split(/\s+(?:și|si|and|i|oraz|plus)\s+/i)
+        .map((x) => x.replace(/^(?:the|a|an|new|nou[aă]?)\s+/i, ""))
+        .forEach((x) => push(x));
     }
   }
   result.piese = piese;
 
-  // Observații — keep original as reclamatie if we found structured fields
-  if (result.client || result.modelUtilaj || result.serie) {
-    // Extract complaint part
-    const recMatch = t.match(
-      /(?:reclam[aă][tț]ie|problem[aă]|defect|nu\s+porne[sș]te|solicitare)[:\s]+([^\n]{10,200})/i
-    );
-    if (recMatch) result.reclamatie = recMatch[1].trim();
-  }
+  // Reclamație — explicit keyword, else a negated symptom segment
+  // ("nu aspiră apa" / "not picking up water" / "nie zbiera wody").
+  const recMatch = kw(
+    "reclama[tț]i[ea]|problem[aă]|problem|defect|fault|issue|usterka|awaria|solicitare",
+    "\\s*[:\\-]\\s*([^\\n]{5,200})"
+  ).exec(t);
+  const symptom = segments.find((sg) =>
+    /^(?:nu|not|no|nie|doesn'?t|does\s+not|won'?t|isn'?t)\s/i.test(sg)
+  );
+  if (recMatch) result.reclamatie = clean(recMatch[1]);
+  else if (symptom) result.reclamatie = capFirst(clean(symptom));
 
   return result;
 }

@@ -19,7 +19,8 @@
     "make:pilot-pack": "npx --yes tsx scripts/make-pilot-pack.mts",
     "pilot-pack:example": "npx --yes tsx scripts/make-pilot-pack.mts --firm \"CleanTech Service SRL\" --logo docs/pilot/example-logo.png --excel docs/pilot/example-catalog.xlsx --excel docs/fixture-fisa-ro-filled.xlsx --tip Revizie --tech \"Andrei Pop\" --tech \"Mihai Ionescu\" --tech \"Elena Dumitru\" --cui RO40123456 --phone \"+40 722 000 111\" --address \"Brașov, str. Industriilor 5\" --locale ro --date 2026-09-25T09:00:00Z --out docs/pilot",
     "smoke:pack": "npx --yes tsx scripts/smoke-pilot-pack.mts",
-    "smoke:pdf-dates": "npx --yes tsx scripts/smoke-pdf-dates.mts"
+    "smoke:pdf-dates": "npx --yes tsx scripts/smoke-pdf-dates.mts",
+    "smoke:heuristic": "npx --yes tsx scripts/smoke-heuristic.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
