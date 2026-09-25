@@ -11,7 +11,9 @@
     "start:lan": "next start -H 0.0.0.0 -p 3000",
     "preview:pdf": "npx --yes tsx scripts/preview-pdf.ts",
     "smoke:locale": "node scripts/smoke-content-locale.mjs && npx --yes tsx scripts/smoke-content-locale.ts",
-    "smoke:currency": "npx --yes tsx scripts/smoke-currency.ts"
+    "smoke:currency": "npx --yes tsx scripts/smoke-currency.ts",
+    "test:ro-fisa-import": "npx --yes tsx scripts/test-ro-fisa-import.mts",
+    "test:ro-fisa-draft": "npx --yes tsx scripts/test-ro-fisa-draft.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

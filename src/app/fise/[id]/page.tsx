@@ -16,6 +16,8 @@ function EditInner() {
   const { t } = useI18n();
   const id = String(params.id);
   const mustReview = search.get("review") === "1";
+  const fromExcel = search.get("from") === "excel";
+  const [excelBannerOpen, setExcelBannerOpen] = useState(fromExcel);
   const [fisa, setFisa] = useState<Fisa | null>(null);
   const [saved, setSaved] = useState(false);
   const [err, setErr] = useState("");
@@ -82,6 +84,31 @@ function EditInner() {
       }
       backHref="/fise"
     >
+      {excelBannerOpen && (
+        <div
+          role="status"
+          className="qf-card mb-3 p-3.5 flex items-start gap-3 text-sm text-teal-950 dark:text-teal-100 bg-teal-50/90 dark:bg-teal-950/40 border-teal-200/80 dark:border-teal-800/60"
+        >
+          <div className="flex-1 leading-relaxed">
+            <p className="font-semibold">{t("excel.importedBanner")}</p>
+            <p className="text-xs mt-0.5 opacity-80">{t("excel.importedNote")}</p>
+          </div>
+          <button
+            type="button"
+            aria-label={t("excel.dismiss")}
+            title={t("excel.dismiss")}
+            onClick={() => {
+              setExcelBannerOpen(false);
+              router.replace(
+                mustReview ? `/fise/${id}?review=1` : `/fise/${id}`
+              );
+            }}
+            className="shrink-0 min-h-[36px] min-w-[36px] rounded-lg border border-teal-300/70 dark:border-teal-700 text-base leading-none font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            ×
+          </button>
+        </div>
+      )}
       <FisaForm fisa={fisa} onChange={setFisa} />
 
       <div className="sticky bottom-20 mt-6 space-y-3 bg-background/95 backdrop-blur-sm pt-3 pb-2 -mx-1 px-1">
