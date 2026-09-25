@@ -299,29 +299,58 @@ function dice(a: string, b: string): number {
   return (2 * inter) / (A.length - 1 + (B.length - 1));
 }
 
-/** Best catalog entry for a spoken name (≥ threshold similarity or containment). */
+export type CatalogMatch<T> = {
+  item: T;
+  score: number;
+  /** Only one entry reached the threshold (or a single exact match). */
+  unique: boolean;
+};
+
+/**
+ * Score catalog entries for a spoken name. Never settles a tie by list order:
+ * if two or more entries match about equally well the result is ambiguous
+ * (unique=false) and callers must keep the spoken text.
+ */
+export function matchCatalog<T>(
+  name: string,
+  list: T[],
+  key: (t: T) => string,
+  threshold = 0.72
+): CatalogMatch<T> | undefined {
+  const n = compact(name);
+  if (n.length < 3) return undefined;
+  const scored: { item: T; score: number; exact: boolean }[] = [];
+  for (const item of list) {
+    const k = compact(key(item));
+    if (!k) continue;
+    const exact = k === n;
+    let score = exact ? 1 : dice(name, key(item));
+    if (!exact && k.length >= 4 && (n.includes(k) || k.includes(n))) score = Math.max(score, 0.9);
+    if (score >= threshold) scored.push({ item, score, exact });
+  }
+  if (!scored.length) return undefined;
+  const exacts = scored.filter((s) => s.exact);
+  if (exacts.length === 1) return { item: exacts[0].item, score: 1, unique: true };
+  if (exacts.length > 1) return { item: exacts[0].item, score: 1, unique: false };
+  scored.sort((x, y) => y.score - x.score);
+  const [top, second] = scored;
+  const unique = !second || top.score - second.score >= 0.08;
+  return { item: top.item, score: top.score, unique };
+}
+
+/** Unique, confident catalog entry for a spoken name — undefined on ties. */
 export function bestMatch<T>(
   name: string,
   list: T[],
   key: (t: T) => string,
   threshold = 0.72
 ): T | undefined {
-  const n = compact(name);
-  if (n.length < 3) return undefined;
-  let best: T | undefined;
-  let bestScore = 0;
-  for (const item of list) {
-    const k = compact(key(item));
-    if (!k) continue;
-    let score = dice(name, key(item));
-    if (k.length >= 4 && (n.includes(k) || k.includes(n))) score = Math.max(score, 0.9);
-    if (score > bestScore) {
-      bestScore = score;
-      best = item;
-    }
-  }
-  return bestScore >= threshold ? best : undefined;
+  const m = matchCatalog(name, list, key, threshold);
+  return m && m.unique ? m.item : undefined;
 }
+
+/** Confidence needed before a catalog entry may also fill the location. */
+const LOCATION_CONFIDENCE = 0.85;
 
 export function applyCatalog(
   ex: Extraction,
@@ -329,10 +358,11 @@ export function applyCatalog(
   equipment: CatalogEquipment[]
 ): Extraction {
   const out = { ...ex };
-  // Serial is the strongest key: exact equipment match fills model/client.
-  const bySerie = out.serie
-    ? equipment.find((e) => e.serie && compact(e.serie) === compact(out.serie))
-    : undefined;
+  // Serial is the strongest key: a single exact equipment match fills model/client.
+  const bySerieAll = out.serie
+    ? equipment.filter((e) => e.serie && compact(e.serie) === compact(out.serie))
+    : [];
+  const bySerie = bySerieAll.length === 1 ? bySerieAll[0] : undefined;
   if (bySerie) {
     out.modelUtilaj = bySerie.model;
     if (!out.client && bySerie.clientName) out.client = bySerie.clientName;
@@ -341,10 +371,14 @@ export function applyCatalog(
     if (m) out.modelUtilaj = m.model;
   }
   if (out.client) {
-    const c = bestMatch(out.client, clients, (x) => x.name);
-    if (c) {
-      out.client = c.name;
-      if (!out.locatie && c.locatie) out.locatie = c.locatie;
+    const c = matchCatalog(out.client, clients, (x) => x.name);
+    // Ambiguous (e.g. "Hotel Continental" → Forum Sibiu AND Oradea): keep the
+    // spoken text and never pull a location from an arbitrary entry.
+    if (c && c.unique) {
+      out.client = c.item.name;
+      if (!out.locatie && c.item.locatie && c.score >= LOCATION_CONFIDENCE) {
+        out.locatie = c.item.locatie;
+      }
     }
   }
   return out;

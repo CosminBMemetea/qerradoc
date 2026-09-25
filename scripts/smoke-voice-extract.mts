@@ -9,11 +9,13 @@
  *      EXTRACT_URL=https://qerradoc.vercel.app/api/extract npm run smoke:voice
  */
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   EXTRACTION_JSON_SCHEMA,
   applyCatalog,
   buildExtractMessages,
   extractionToFisa,
+  matchCatalog,
   numStr,
   validateExtraction,
   type ExtractResponse,
@@ -142,6 +144,49 @@ function mocked() {
   console.log("smoke-voice-extract: mocked OK");
 }
 
+// ---------------------------------------------------------------- catalog ties
+function catalogTies() {
+  const pack = JSON.parse(readFileSync("docs/pilot/cleantech-service-srl.querra.json", "utf8"));
+  // The pilot pack itself holds both "Hotel Continental Forum" (Sibiu) and
+  // "Hotel Continental Oradea" (from the RO fișă fixture) — the QA case.
+  const base: CatalogClient[] = pack.clients;
+  assert.ok(base.some((c) => /oradea/i.test(c.name)) && base.some((c) => /forum/i.test(c.name)));
+  const oradea = base.find((c) => /continental oradea/i.test(c.name))!;
+  const withoutOradea = base.filter((c) => c !== oradea);
+  const equipment: CatalogEquipment[] = pack.equipment;
+  const ex = validateExtraction(
+    { client: "Hotel Continental", locatie: "", modelUtilaj: "Nilfisk SC500", serie: "", oreFunctionare: "", tip: "", reclamatie: "", observatii: "", manoperaOre: "", deplasareKm: "", piese: [] },
+    SENTENCES.ro
+  )!;
+  for (const [label, list] of [
+    ["pack-order", base],
+    ["reversed", [...base].reverse()],
+  ] as const) {
+    const out = applyCatalog(ex, [...list], equipment);
+    assert.equal(out.client, "Hotel Continental", `${label}: ambiguous → spoken text kept`);
+    assert.equal(out.locatie, "", `${label}: no location from an ambiguous match`);
+    assert.equal(matchCatalog("Hotel Continental", [...list], (c) => c.name)?.unique, false, `${label}: tie detected`);
+  }
+  // Unique match (pack only has Forum) → canonical name + location.
+  for (const list of [withoutOradea, [...withoutOradea].reverse()]) {
+    const out = applyCatalog(ex, list, equipment);
+    assert.equal(out.client, "Hotel Continental Forum");
+    assert.equal(out.locatie, "Sibiu, Piața Unirii 10");
+  }
+  // Exact name wins even when another entry contains it.
+  const exact = applyCatalog({ ...ex, client: oradea.name }, base, equipment);
+  assert.equal(exact.client, oradea.name);
+  assert.equal(exact.locatie, oradea.locatie || "");
+  // Serial shared by two machines → no guess.
+  const now = new Date().toISOString();
+  const dupSerie = applyCatalog({ ...ex, modelUtilaj: "", serie: "SN-998877" }, base, [
+    ...equipment,
+    { id: "dup", model: "Other model", serie: "SN998877", updatedAt: now },
+  ]);
+  assert.equal(dupSerie.modelUtilaj, "");
+  console.log("smoke-voice-extract: catalog ties OK");
+}
+
 // ---------------------------------------------------------------- live
 async function live() {
   const url = process.env.EXTRACT_URL || (process.env.GROQ_API_KEY ? "http://localhost:3000/api/extract" : "");
@@ -174,4 +219,5 @@ async function live() {
 }
 
 mocked();
+catalogTies();
 await live();
