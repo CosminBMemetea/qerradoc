@@ -15,7 +15,10 @@
     "test:ro-fisa-import": "npx --yes tsx scripts/test-ro-fisa-import.mts",
     "test:ro-fisa-draft": "npx --yes tsx scripts/test-ro-fisa-draft.mts",
     "smoke:voice": "npx --yes tsx scripts/smoke-voice-extract.mts",
-    "smoke:send": "npx --yes tsx scripts/smoke-send.mts"
+    "smoke:send": "npx --yes tsx scripts/smoke-send.mts",
+    "make:pilot-pack": "npx --yes tsx scripts/make-pilot-pack.mts",
+    "pilot-pack:example": "npx --yes tsx scripts/make-pilot-pack.mts --firm \"CleanTech Service SRL\" --logo docs/pilot/example-logo.png --excel docs/pilot/example-catalog.xlsx --excel docs/fixture-fisa-ro-filled.xlsx --tip Revizie --tech \"Andrei Pop\" --tech \"Mihai Ionescu\" --tech \"Elena Dumitru\" --cui RO40123456 --phone \"+40 722 000 111\" --address \"Brașov, str. Industriilor 5\" --locale ro --date 2026-09-25T09:00:00Z --out docs/pilot",
+    "smoke:pack": "npx --yes tsx scripts/smoke-pilot-pack.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",

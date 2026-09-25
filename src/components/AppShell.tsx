@@ -4,7 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sheet from "./Sheet";
-import { clearSession, getSession } from "@/lib/db";
+import { clearSession, getSession, getSettings } from "@/lib/db";
+import { SETTINGS_CHANGED_EVENT } from "@/lib/pilot-pack-import";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "@/lib/theme";
 
@@ -43,6 +44,18 @@ export default function AppShell({
   const { theme, toggleTheme } = useTheme();
   const [tech, setTech] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [firm, setFirm] = useState<{ name: string; logo?: string; pack: boolean }>({ name: "", pack: false });
+
+  // Firm identity (pilot pack / Setări) shown on the home header.
+  useEffect(() => {
+    const load = () =>
+      getSettings().then((s) =>
+        setFirm({ name: s.companyName, logo: s.logoDataUrl, pack: !!s.packName })
+      );
+    load();
+    window.addEventListener(SETTINGS_CHANGED_EVENT, load);
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, load);
+  }, []);
 
   useEffect(() => {
     getSession().then((s) => {
@@ -81,11 +94,12 @@ export default function AppShell({
           {!backHref && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src="/icons/icon-192.png"
+              src={firm.logo || "/icons/icon-192.png"}
               alt=""
               width={32}
               height={32}
-              className="h-8 w-8 rounded-lg shrink-0 shadow-sm"
+              data-testid="header-logo"
+              className={`h-8 w-8 rounded-lg shrink-0 shadow-sm ${firm.logo ? "object-contain bg-white border border-border" : ""}`}
               draggable={false}
             />
           )}
@@ -93,8 +107,12 @@ export default function AppShell({
             <h1 className="text-[17px] font-semibold tracking-tight truncate text-foreground">
               {title || t("app.name")}
             </h1>
-            {tech && (
-              <p className="text-xs text-muted truncate">{tech}</p>
+            {(tech || (!backHref && firm.pack)) && (
+              <p className="text-xs text-muted truncate" data-testid="header-sub">
+                {!backHref && firm.pack && firm.name
+                  ? [firm.name, tech].filter(Boolean).join(" · ")
+                  : tech}
+              </p>
             )}
           </div>
           {showNav && (

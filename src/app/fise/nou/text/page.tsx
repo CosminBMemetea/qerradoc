@@ -10,7 +10,7 @@ import { emptyFisa } from "@/lib/types";
 import { sampleWhatsApp } from "@/lib/parse-text";
 import { voiceFill } from "@/lib/voice-fill";
 import type { Fisa } from "@/lib/types";
-import { saveFisa, getSession } from "@/lib/db";
+import { saveFisa, getSession, getSettings } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 
 function TextInner() {
@@ -36,7 +36,7 @@ function TextInner() {
   async function go(parse: boolean) {
     setBusy(true);
     try {
-      const session = await getSession();
+      const [session, firm] = await Promise.all([getSession(), getSettings()]);
       const year = new Date().getFullYear();
       const contentLocale =
         locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
@@ -45,6 +45,7 @@ function TextInner() {
         : { patch: { reclamatie: text } as Partial<Fisa>, filled: [], source: "heuristic" as const };
       const parsed = filled.patch;
       const fisa = emptyFisa({
+        ...(firm.defaultTip ? { tip: firm.defaultTip } : {}),
         ...parsed,
         nrFisa: parsed.nrFisa || `${year}-${String(Date.now()).slice(-4)}`,
         semnaturaTehnician:

@@ -8,7 +8,7 @@ import type {
   CatalogClient,
   CatalogEquipment,
 } from "./types";
-import { resolveContentLocale } from "./types";
+import { resolveContentLocale, TIPURI } from "./types";
 import { normalizeCurrency } from "./currency";
 import {
   listFise,
@@ -92,6 +92,16 @@ function softNormalizeSettings(raw: unknown): FirmSettings | null {
     phone: typeof raw.phone === "string" ? raw.phone : undefined,
     logoDataUrl:
       typeof raw.logoDataUrl === "string" ? raw.logoDataUrl : undefined,
+    // Pilot-pack defaults (optional)
+    defaultTip:
+      typeof raw.defaultTip === "string" &&
+      (TIPURI as string[]).includes(raw.defaultTip)
+        ? (raw.defaultTip as FirmSettings["defaultTip"])
+        : undefined,
+    technicians: Array.isArray(raw.technicians)
+      ? raw.technicians.filter((x): x is string => typeof x === "string" && !!x.trim())
+      : undefined,
+    packName: typeof raw.packName === "string" ? raw.packName : undefined,
   };
 }
 

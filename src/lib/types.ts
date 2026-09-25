@@ -98,6 +98,12 @@ export interface FirmSettings {
   logoDataUrl?: string;
   address?: string;
   phone?: string;
+  /** Pilot pack: default fișă type for new sheets. */
+  defaultTip?: TipFisa;
+  /** Pilot pack: technician names offered at login. */
+  technicians?: string[];
+  /** Pilot pack name/slug once imported (shown in Setări). */
+  packName?: string;
 }
 
 export interface LicenseState {

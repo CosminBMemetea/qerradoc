@@ -5,10 +5,12 @@ import Link from "next/link";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import NewFisaSheet from "@/components/NewFisaSheet";
-import { listFise, getSession } from "@/lib/db";
+import PilotPackCta from "@/components/PilotPackCta";
+import { listFise, getSession, getSettings } from "@/lib/db";
+import { SETTINGS_CHANGED_EVENT } from "@/lib/pilot-pack-import";
 import { seedDemoFisa } from "@/lib/seed";
 import { loadDemo } from "@/lib/demos";
-import type { Fisa, TemplateKind } from "@/lib/types";
+import type { Fisa, FirmSettings, TemplateKind } from "@/lib/types";
 import { resolveContentLocale } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { techExample } from "@/lib/defaults";
@@ -19,6 +21,14 @@ export default function FiseListPage() {
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
+  const [firm, setFirm] = useState<FirmSettings | null>(null);
+
+  useEffect(() => {
+    const load = () => getSettings().then(setFirm);
+    load();
+    window.addEventListener(SETTINGS_CHANGED_EVENT, load);
+    return () => window.removeEventListener(SETTINGS_CHANGED_EVENT, load);
+  }, []);
 
   async function reload() {
     setLoading(true);
@@ -52,6 +62,22 @@ export default function FiseListPage() {
 
   return (
     <AppShell title={t("fise.title")}>
+      {firm?.packName && (
+        <div className="flex items-center gap-3 mb-4" data-testid="home-firm">
+          {firm.logoDataUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={firm.logoDataUrl}
+              alt=""
+              className="h-12 w-12 rounded-xl object-contain bg-white border border-border shadow-sm shrink-0"
+            />
+          )}
+          <div className="min-w-0">
+            <p className="font-semibold text-foreground truncate">{firm.companyName}</p>
+            {firm.phone && <p className="text-xs text-muted truncate">{firm.phone}</p>}
+          </div>
+        </div>
+      )}
       <button
         type="button"
         onClick={() => setNewOpen(true)}
@@ -83,6 +109,7 @@ export default function FiseListPage() {
             {t("fise.emptyFriendly")}
           </p>
           <div className="mt-5 space-y-2.5 text-left">
+            {!firm?.packName && <PilotPackCta onDone={() => reload()} />}
             <BigButton
               variant="secondary"
               onClick={() => onDemo("curatenie")}

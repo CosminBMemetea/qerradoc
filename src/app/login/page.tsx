@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { FirmSettings } from "@/lib/types";
+import PilotPackCta from "@/components/PilotPackCta";
 import { useRouter } from "next/navigation";
 import { saveSession, getSettings, saveSettings, getLicense } from "@/lib/db";
 import { Field, inputCls } from "@/components/Field";
@@ -22,6 +24,24 @@ export default function LoginPage() {
   const [tech, setTech] = useState(() => techExample(locale));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [techs, setTechs] = useState<string[]>([]);
+  const [firmLogo, setFirmLogo] = useState<string | undefined>();
+
+  // Pilot pack (if imported earlier): firm name, logo and technician list.
+  const applyFirm = useCallback((s: FirmSettings, fromPack: boolean) => {
+    setTechs(s.technicians || []);
+    setFirmLogo(s.logoDataUrl);
+    if (s.packName || fromPack) {
+      setFirm(s.companyName);
+      setTech((prev) =>
+        isTechExample(prev) && s.technicians?.[0] ? s.technicians[0] : prev
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    getSettings().then((s) => applyFirm(s, false));
+  }, [applyFirm]);
 
   useEffect(() => {
     setFirm((prev) => (isFirmExample(prev) ? firmExample(locale) : prev));
@@ -88,11 +108,11 @@ export default function LoginPage() {
         <div className="text-center mb-10">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/icons/logo.png"
+            src={firmLogo || "/icons/logo.png"}
             alt=""
             width={88}
             height={88}
-            className="mx-auto mb-5 h-[88px] w-[88px] rounded-[22px] shadow-md shadow-indigo-500/20"
+            className={`mx-auto mb-5 h-[88px] w-[88px] rounded-[22px] shadow-md shadow-indigo-500/20 ${firmLogo ? "object-contain bg-white" : ""}`}
             draggable={false}
           />
           <p className="text-[11px] font-semibold tracking-[0.18em] uppercase text-indigo-600 dark:text-indigo-400 mb-3">
@@ -124,7 +144,15 @@ export default function LoginPage() {
               value={tech}
               onChange={(e) => setTech(e.target.value)}
               autoComplete="name"
+              list={techs.length ? "pack-techs" : undefined}
             />
+            {techs.length > 0 && (
+              <datalist id="pack-techs">
+                {techs.map((n) => (
+                  <option key={n} value={n} />
+                ))}
+              </datalist>
+            )}
           </Field>
           {err && (
             <p className="text-red-600 dark:text-red-400 text-sm font-medium py-1">
@@ -137,6 +165,12 @@ export default function LoginPage() {
             </BigButton>
           </div>
         </form>
+        <div className="mt-4">
+          <PilotPackCta
+            variant="link"
+            onDone={(p) => applyFirm(p.settings, true)}
+          />
+        </div>
       </div>
     </div>
   );

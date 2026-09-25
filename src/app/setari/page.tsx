@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
+import { isPilotPack } from "@/lib/pilot-pack";
+import { confirmAndApplyPack, notifySettingsChanged } from "@/lib/pilot-pack-import";
 import BigButton from "@/components/BigButton";
 import { Field, inputCls } from "@/components/Field";
 import {
@@ -96,6 +98,7 @@ export default function SetariPage() {
   async function onSave() {
     // Save firm settings only — do not overwrite login session
     await saveSettings(s);
+    notifySettingsChanged();
     setMsg(t("settings.saved"));
   }
 
@@ -140,6 +143,30 @@ export default function SetariPage() {
       }
 
       const text = await readFileAsText(file);
+      // A pilot pack (.querra.json with `pack`) merges instead of replacing.
+      let rawJson: unknown = null;
+      try {
+        rawJson = JSON.parse(text);
+      } catch {
+        /* handled by parseBackupJson below */
+      }
+      if (isPilotPack(rawJson)) {
+        const res = await confirmAndApplyPack(rawJson, t);
+        if (!res.ok) {
+          if (res.error === "invalid") setMsg(t("pack.err"));
+          return;
+        }
+        setS(await getSettings());
+        await refreshCatalogCounts();
+        setMsg(
+          t("pack.done", {
+            name: res.pack.pack.name,
+            clients: res.plan.stats.clientsAdded,
+            equipment: res.plan.stats.equipmentAdded,
+          })
+        );
+        return;
+      }
       const parsed = parseBackupJson(text);
       if (!parsed.ok) {
         setMsg(t("settings.backupInvalid"));
@@ -292,6 +319,14 @@ export default function SetariPage() {
         <p className="text-xs text-muted mb-4 leading-relaxed">
           {t("settings.pdfHeaderHint")}
         </p>
+        {s.packName && (
+          <p
+            data-testid="pack-name"
+            className="-mt-2 mb-4 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-800/60"
+          >
+            {t("pack.loaded", { name: s.packName })}
+          </p>
+        )}
 
         {/* One-line PDF preview strip */}
         <div className="mb-4 rounded-xl border border-border bg-stone-50 dark:bg-stone-900/60 px-3 py-2.5 flex items-center gap-3 min-h-[52px]">

@@ -380,6 +380,13 @@ const ro: Dict = {
   "send.sentAt": "Trimisă {time}",
   "send.badge": "Trimisă",
   "send.signFirst": "După semnătura clientului apare butonul „Trimite clientului”.",
+  "pack.cta": "Ai primit un pachet de configurare? Încarcă-l",
+  "pack.ctaDesc": "Fișierul .querra.json de la firmă: logo, clienți, utilaje, tehnicieni.",
+  "pack.loading": "Încarc pachetul…",
+  "pack.confirm": "Încarci pachetul de configurare „{name}”?\n\n• firma și logo-ul\n• {clients} clienți și {equipment} utilaje (se adaugă la cele existente)\n• {techs} tehnicieni\n\nFișele existente nu se modifică.",
+  "pack.done": "Pachetul „{name}” a fost încărcat: {clients} clienți și {equipment} utilaje noi.",
+  "pack.err": "Fișierul nu este un pachet Querra valid.",
+  "pack.loaded": "Pachet de configurare: {name}",
 };
 
 const en: Dict = {
@@ -723,6 +730,13 @@ const en: Dict = {
   "send.sentAt": "Sent {time}",
   "send.badge": "Sent",
   "send.signFirst": "Once the client signs, the “Send to client” button appears.",
+  "pack.cta": "Got a setup pack? Load it",
+  "pack.ctaDesc": "The .querra.json file from your company: logo, clients, machines, technicians.",
+  "pack.loading": "Loading the pack…",
+  "pack.confirm": "Load setup pack “{name}”?\n\n• company name and logo\n• {clients} clients and {equipment} machines (added to what you already have)\n• {techs} technicians\n\nExisting sheets are not changed.",
+  "pack.done": "Pack “{name}” loaded: {clients} new clients and {equipment} new machines.",
+  "pack.err": "This file is not a valid Querra pack.",
+  "pack.loaded": "Setup pack: {name}",
 };
 
 const pl: Dict = {
@@ -1068,6 +1082,13 @@ const pl: Dict = {
   "send.sentAt": "Wysłana {time}",
   "send.badge": "Wysłana",
   "send.signFirst": "Po podpisie klienta pojawi się przycisk „Wyślij klientowi”.",
+  "pack.cta": "Masz pakiet konfiguracyjny? Wczytaj go",
+  "pack.ctaDesc": "Plik .querra.json od firmy: logo, klienci, maszyny, serwisanci.",
+  "pack.loading": "Wczytuję pakiet…",
+  "pack.confirm": "Wczytać pakiet konfiguracyjny „{name}”?\n\n• nazwa firmy i logo\n• {clients} klientów i {equipment} maszyn (dodane do istniejących)\n• {techs} serwisantów\n\nIstniejące karty nie zostaną zmienione.",
+  "pack.done": "Pakiet „{name}” wczytany: {clients} nowych klientów i {equipment} nowych maszyn.",
+  "pack.err": "Ten plik nie jest prawidłowym pakietem Querra.",
+  "pack.loaded": "Pakiet konfiguracyjny: {name}",
 };
 
 const DICTS: Record<Locale, Dict> = { ro, en, pl };

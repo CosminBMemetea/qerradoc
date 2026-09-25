@@ -6,7 +6,7 @@ import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import { emptyFisa } from "@/lib/types";
 import { demoFillFromPhoto } from "@/lib/parse-text";
-import { saveFisa, getSession } from "@/lib/db";
+import { saveFisa, getSession, getSettings } from "@/lib/db";
 import { useI18n } from "@/lib/i18n";
 
 function readFileAsDataUrl(file: File): Promise<string> {
@@ -58,7 +58,7 @@ export default function NewFromPhotoPage() {
     if (!preview && mode !== "empty") return;
     setBusy(true);
     try {
-      const session = await getSession();
+      const [session, firm] = await Promise.all([getSession(), getSettings()]);
       const year = new Date().getFullYear();
       let partial = {};
       if (mode === "model" || mode === "ocr") {
@@ -67,6 +67,7 @@ export default function NewFromPhotoPage() {
       const contentLocale =
         locale === "en" || locale === "pl" || locale === "ro" ? locale : "ro";
       const fisa = emptyFisa({
+        ...(firm.defaultTip ? { tip: firm.defaultTip } : {}),
         ...partial,
         photoDataUrl: preview || undefined,
         nrFisa: `${year}-${String(Date.now()).slice(-4)}`,
