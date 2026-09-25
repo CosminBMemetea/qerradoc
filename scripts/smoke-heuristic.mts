@@ -56,6 +56,30 @@ assert.equal(parseWhatsAppText("două ore").manoperaOre, "2");
 assert.equal(parseWhatsAppText("one and a half hours").manoperaOre, "1.5");
 assert.equal(parseWhatsAppText("utilaj cu 1842 ore de funcționare").manoperaOre, undefined, "hour meter ≠ labour");
 
+// Hour meter vs labour (306 item 5): keyword before OR after the number.
+const HM: [string, string | undefined, string | undefined][] = [
+  // text, oreFunctionare, manoperaOre
+  ["contor 1842 ore", "1842", undefined],
+  ["2105 hours on the meter", "2105", undefined],
+  ["1842 godzin pracy", "1842", undefined],
+  ["1842 ore de funcționare", "1842", undefined],
+  ["1842 motogodzin", "1842", undefined],
+  ["licznik 1760, dwie godziny", "1760", "2"],
+  ["hour meter 2105, two hours", "2105", "2"],
+  ["contor 1842 ore, două ore manoperă", "1842", "2"],
+  ["1842 ore de funcționare, 3 ore", "1842", "3"],
+  ["utilaj cu 350 ore", undefined, undefined],
+  ["150 hours", undefined, undefined],
+  ["an hour and a half", undefined, "1.5"],
+  ["o oră și jumătate", undefined, "1.5"],
+  ["one and a half hours", undefined, "1.5"],
+];
+for (const [txt, meter, labour] of HM) {
+  const r = parseWhatsAppText(txt);
+  assert.equal(r.oreFunctionare, meter, `meter: ${txt}`);
+  assert.equal(r.manoperaOre, labour, `labour: ${txt}`);
+}
+
 // WhatsApp samples (ro/en/pl).
 const s = {
   ro: parseWhatsAppText(sampleWhatsApp("ro")),

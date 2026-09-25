@@ -157,30 +157,53 @@ export function parseWhatsAppText(text: string): Partial<Fisa> {
   const serieMatch = kw(SERIE_KW, "(?:\\s*[:#]\\s*|\\s+)([A-Z0-9][A-Z0-9\\-\\/.]{3,29})", "iu").exec(t);
   if (serieMatch && /\d/.test(serieMatch[1])) result.serie = clean(serieMatch[1]);
 
-  // Ore funcționare (hour meter) — keyword followed by a number.
-  const oreMatch = kw(
-    "ore\\s*(?:de\\s*)?func\\p{L}*|ore|contor|hours?(?:\\s*meter)?|motogodzin\\p{L}*",
-    "\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)"
-  ).exec(t);
-  if (oreMatch) result.oreFunctionare = oreMatch[1].replace(",", ".");
+  // Ore funcționare (hour meter) — keyword before the number ("contor 1842",
+  // "ore funcționare 1842", "hour meter 2105", "licznik 1842") or after it
+  // ("1842 ore de funcționare", "2105 hours on the meter", "1842 godzin pracy",
+  // "1842 motogodzin").
+  const METER_BEFORE =
+    "ore\\s*(?:de\\s*)?func\\p{L}*|ore|contor(?:ul)?|licznik\\p{L}*|hours?\\s*meter|hour-meter|meter|hours|motogodzin\\p{L}*";
+  const METER_AFTER =
+    "(?:ore|or[ăa]|h|hours?|godzin\\p{L}*)\\s+(?:de\\s+)?(?:func\\p{L}*|pracy|on\\s+the\\s+(?:hour\\s+)?meter|on\\s+the\\s+counter|la\\s+contor|(?:na\\s+)?liczniku)|motogodzin\\p{L}*|mth";
+  const meterBefore = kw(METER_BEFORE, "\\s*[:\\-]?\\s*(\\d+(?:[.,]\\d+)?)").exec(t);
+  const meterAfter = new RegExp(`${WB}(\\d+(?:[.,]\\d+)?)\\s*(?:${METER_AFTER})${WE}`, "iu").exec(t);
+  const meter = meterBefore?.[1] ?? meterAfter?.[1];
+  if (meter) result.oreFunctionare = meter.replace(",", ".");
 
   // Manoperă — "manoperă 2", "Labour 1.5 h", "două ore manoperă", "dwie godziny robocizny".
+  const UNIT_H = "(?:h|ore|or[ăa]|hours?|godzin\\p{L}*|godz)";
+  const HALF_AFTER = /^\s+(?:and\s+a\s+half|[șs]i\s+jum[ăa]tate|i\s+p[óo][łl])/i;
+  const withHalf = (raw: string, rest: string) => {
+    const v = numValue(raw);
+    return v && HALF_AFTER.test(rest) && !/\.5$/.test(v) ? String(Number(v) + 0.5) : v;
+  };
+  let man = "";
   const manBefore = kw("manoper[aă]|ore\\s*lucru|labou?r|robocizn\\p{L}*", `\\s*[:\\-]?\\s*${NUM}`).exec(t);
   const manAfter = kw(
     NUM.replace(WE, ""),
-    `\\s*(?:h|ore|or[ăa]|hours?|godzin\\p{L}*)${WE}\\s*(?:de\\s+)?(?:manoper\\p{L}*|labou?r|robocizn\\p{L}*|lucru|work)`
+    `\\s*${UNIT_H}${WE}\\s*(?:de\\s+)?(?:manoper\\p{L}*|labou?r|robocizn\\p{L}*|lucru|work)`
   ).exec(t);
-  // "two hours" / "dwie godziny" / "două ore" with no labour word → labour,
-  // unless it is the hour meter ("ore de funcționare", "hours meter").
-  const manBare = kw(
-    NUM.replace(WE, ""),
-    `\\s*(?:h|ore|or[ăa]|hours?|godzin\\p{L}*)${WE}(?!\\s*(?:de\\s+)?(?:func\\p{L}*|meter|counter|contor))`
-  ).exec(t);
-  const man = manBefore?.[1] ?? manAfter?.[1] ?? manBare?.[1];
-  if (man) {
-    const v = numValue(man);
-    if (v) result.manoperaOre = v;
+  if (manBefore) man = numValue(manBefore[1]);
+  else if (manAfter) man = numValue(manAfter[1]);
+  else {
+    // "two hours" / "dwie godziny" / "an hour and a half" with no labour word
+    // → labour, unless it is the hour meter (keyword before or after) or a
+    // value of 100+ h (that is a meter reading, never labour).
+    const bare = new RegExp(`${WB}${NUM.replace(WE, "")}\\s*${UNIT_H}${WE}`, "giu");
+    const meterNear = new RegExp(`(?:${METER_BEFORE})\\s*[:\\-]?\\s*$`, "iu");
+    const meterNext = new RegExp(`^\\s*(?:de\\s+)?(?:func\\p{L}*|pracy|on\\s+the|meter|counter|contor|la\\s+contor|(?:na\\s+)?liczniku)`, "iu");
+    let m: RegExpExecArray | null;
+    while ((m = bare.exec(t))) {
+      const before = t.slice(Math.max(0, m.index - 25), m.index + (m[0].length - m[0].trimStart().length));
+      const rest = t.slice(m.index + m[0].length);
+      if (meterNear.test(before) || meterNext.test(rest)) continue;
+      const v = withHalf(m[1], rest);
+      if (!v || Number(v) >= 100) continue;
+      man = v;
+      break;
+    }
   }
+  if (man) result.manoperaOre = man;
 
   // Deplasare km.
   const kmMatch =
