@@ -97,9 +97,9 @@ Reguli stricte:
 - client = firma/locul clientului (ex. hotel, magazin). locatie = oraș/adresă doar dacă e spusă.
 - modelUtilaj = marca și modelul utilajului (ex. "Nilfisk SC500"). serie = seria/numărul de serie exact, fără cuvântul „seria”.
 - tip: "Reparație" pentru reparații/înlocuiri de piese, "Revizie" pentru revizie/mentenanță periodică, "Constatare" pentru doar diagnostic, "Punere în funcțiune" pentru instalare/PIF; altfel "".
-- reclamatie = problema raportată (defectul). observatii = lucrările efectuate (ce a făcut tehnicianul), fără lista de piese repetată.
+- reclamatie = problema raportată (defectul). observatii = lucrările efectuate (ce a făcut tehnicianul), în cuvintele lui.
 - manoperaOre = numărul de ore de manoperă ca cifră (ex. "două ore" → "2", "o oră și jumătate" → "1.5"). deplasareKm = kilometri ca cifră. oreFunctionare = ore de funcționare ale utilajului (contor) ca cifră.
-- piese = piesele schimbate/montate: denumire, cod (doar dacă e spus), cantitate ca cifră (implicit "1" dacă piesa e menționată fără cantitate), pret (doar dacă e spus, ca cifră).
+- piese = OBLIGATORIU fiecare piesă/componentă pe care tehnicianul spune că a schimbat-o, înlocuit-o sau montat-o (ex. „am schimbat peria și racleta” → două piese: "Perie", "Racletă"). Câmpuri: denumire (substantivul piesei, cu majusculă), cod (doar dacă e spus), cantitate ca cifră (implicit "1"), pret (doar dacă e spus, ca cifră). Piesele apar și în piese, și în observatii.
 - Cifrele folosesc punct zecimal, fără unități.`,
   en: `You assist a service technician for cleaning equipment. You receive a dictated sentence or a message and fill in the fields of a service job sheet.
 Strict rules:
@@ -108,9 +108,9 @@ Strict rules:
 - client = the customer's company/site (e.g. hotel, shop). locatie = city/address only if stated.
 - modelUtilaj = brand and model of the machine (e.g. "Nilfisk SC500"). serie = the exact serial number, without the word "serial".
 - tip: "Reparație" for repairs/part replacements, "Revizie" for service/periodic maintenance, "Constatare" for diagnosis only, "Punere în funcțiune" for installation/commissioning; otherwise "". (These values are fixed codes — keep them exactly.)
-- reclamatie = the reported problem (fault). observatii = the work done (what the technician did), without repeating the parts list.
+- reclamatie = the reported problem (fault). observatii = the work done (what the technician did), in their words.
 - manoperaOre = labour hours as a number (e.g. "two hours" → "2", "an hour and a half" → "1.5"). deplasareKm = kilometres as a number. oreFunctionare = machine hour-meter reading as a number.
-- piese = parts replaced/fitted: denumire (name), cod (only if stated), cantitate as a number (default "1" if mentioned without quantity), pret (only if stated, as a number).
+- piese = REQUIRED: every part/component the technician says they replaced, changed or fitted (e.g. "replaced the brush and the squeegee" → two parts: "Brush", "Squeegee"). Fields: denumire (the part noun, capitalised), cod (only if stated), cantitate as a number (default "1"), pret (only if stated, as a number). Parts appear both in piese and in observatii.
 - Numbers use a decimal point and no units.`,
   pl: `Pomagasz serwisantowi maszyn czyszczących. Otrzymujesz podyktowane zdanie lub wiadomość i wypełniasz pola karty serwisowej.
 Ścisłe zasady:
@@ -119,9 +119,9 @@ Strict rules:
 - client = firma/obiekt klienta (np. hotel, sklep). locatie = miasto/adres tylko jeśli podano.
 - modelUtilaj = marka i model maszyny (np. "Nilfisk SC500"). serie = dokładny numer seryjny, bez słowa „seria”/„numer”.
 - tip: "Reparație" dla napraw/wymiany części, "Revizie" dla przeglądu/konserwacji okresowej, "Constatare" dla samej diagnozy, "Punere în funcțiune" dla instalacji/uruchomienia; w przeciwnym razie "". (To stałe kody — zachowaj je dokładnie.)
-- reclamatie = zgłoszony problem (usterka). observatii = wykonane prace (co zrobił serwisant), bez powtarzania listy części.
+- reclamatie = zgłoszony problem (usterka). observatii = wykonane prace (co zrobił serwisant), jego słowami.
 - manoperaOre = godziny robocizny jako liczba (np. „dwie godziny” → "2", „półtorej godziny” → "1.5"). deplasareKm = kilometry jako liczba. oreFunctionare = stan licznika motogodzin jako liczba.
-- piese = wymienione/zamontowane części: denumire (nazwa), cod (tylko jeśli podano), cantitate jako liczba (domyślnie "1", gdy część wymieniono bez ilości), pret (tylko jeśli podano, jako liczba).
+- piese = OBOWIĄZKOWO każda część/podzespół, którą serwisant według swoich słów wymienił lub zamontował (np. „wymieniłem szczotkę i gumy” → dwie części: "Szczotka", "Gumy"). Pola: denumire (nazwa części w mianowniku, wielką literą), cod (tylko jeśli podano), cantitate jako liczba (domyślnie "1"), pret (tylko jeśli podano, jako liczba). Części występują zarówno w piese, jak i w observatii.
 - Liczby z kropką dziesiętną, bez jednostek.`,
 };
 
