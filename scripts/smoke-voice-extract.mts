@@ -265,6 +265,97 @@ function mocked() {
     assert.equal(two.piese.length, 2);
   }
 
+  // 63a: real inflection stripper — table-driven.
+  {
+    const kept = (txt: string, name: string) =>
+      validateExtraction({ ...blank, piese: [{ denumire: name, cod: "", cantitate: "1", pret: "" }] }, txt)!.piese.length === 1;
+    const MATCH: [string, string][] = [
+      ["am schimbat furtunurile", "Furtun"],
+      ["am schimbat sacii", "Sac"],
+      ["am schimbat curelele", "Curea"],
+      ["am schimbat șuruburile", "Șurub"],
+      ["am schimbat roțile", "Roată"],
+      ["am schimbat perii", "Perie"],
+      ["am schimbat porțile", "Poartă"],
+      ["am schimbat garniturile", "Garnitură"],
+      ["am schimbat filtrele", "Filtru"],
+      ["am schimbat duzele", "Duză"],
+      ["am schimbat bateriile", "Baterie"],
+      ["am schimbat rulmenții", "Rulment"],
+      ["am schimbat lamele", "Lamă"],
+      ["am schimbat pompele", "Pompă"],
+      ["am schimbat furtunul de apă", "Furtun"],
+      ["am schimbat cablul", "Cablu"],
+      ["wymieniłem koła", "Koło"],
+      ["wymieniłem uszczelki", "Uszczelka"],
+      ["replaced the wheels", "Wheel"],
+      ["replaced the brushes", "Brush"],
+      ["am schimbat racleta", "Racletă"],
+      ["wymieniłem szczotkę walcową", "Szczotka walcowa"],
+    ];
+    for (const [txt, name] of MATCH) assert.ok(kept(txt, name), `match: ${txt} → ${name}`);
+    const REJECT: [string, string][] = [
+      ["am schimbat rotorul", "Roată"],
+      ["am schimbat roțile", "Rotor"],
+      ["am schimbat cablul", "Cablaj"],
+      ["am schimbat perna", "Perie"],
+      ["am schimbat furca", "Furtun"],
+      ["replaced the bell", "Belt"],
+      ["nu aspiră apa, am schimbat racleta", "Motor aspirație"],
+      ["am schimbat pistolul", "Piston"],
+      ["am schimbat motorașul", "Motor"],
+    ];
+    for (const [txt, name] of REJECT) assert.ok(!kept(txt, name), `reject: ${txt} → ${name}`);
+
+    // Dedupe only on equal stemmed full names.
+    const SEPARATE: [string, string][] = [
+      ["Piston", "Pistol"], ["Motor", "Motoraș"], ["Roată", "Rotor"], ["Cablu", "Cablaj"],
+      ["Furtun", "Furcă"], ["Clapetă", "Clamă"], ["Perie", "Pernă"], ["Belt", "Bell"],
+    ];
+    for (const [x, y] of SEPARATE) {
+      const out = validateExtraction({ ...blank, piese: [
+        { denumire: x, cod: "", cantitate: "1", pret: "" },
+        { denumire: y, cod: "", cantitate: "1", pret: "" },
+      ] }, `am schimbat ${x.toLowerCase()} și ${y.toLowerCase()}`)!;
+      assert.equal(out.piese.length, 2, `separate: ${x} + ${y}`);
+    }
+    for (const [x, y] of [["Racletă", "Racleta"], ["Racleta", "Racletă"], ["Perie cilindrică", "perie cilindrica"]]) {
+      const out = validateExtraction({ ...blank, piese: [
+        { denumire: x, cod: "", cantitate: "1", pret: "" },
+        { denumire: y, cod: "", cantitate: "1", pret: "" },
+      ] }, "am schimbat racleta și peria cilindrică")!;
+      assert.equal(out.piese.length, 1, `merge: ${x} + ${y}`);
+    }
+
+    // Price table.
+    const PRICE: [string, string, string][] = [
+      // text, model price, expected
+      ["am schimbat racleta și 2 perii", "2", ""],
+      ["am schimbat racleta, contor 1842", "1842", ""],
+      ["am schimbat racleta 85", "85", "85"],
+      ["am schimbat racleta 85, 2 ore", "85", "85"],
+      ["am schimbat racleta, 4 ore manoperă, 99 km", "99", ""],
+      ["am schimbat racleta 99 lei", "99", "99"],
+      ["am schimbat racleta, preț 150", "150", "150"],
+      ["am schimbat racleta la 120 RON", "120", "120"],
+      ["am schimbat racleta, licznik 1760", "1760", ""],
+      ["am schimbat racleta, bucata cu 3 șuruburi noi", "3", ""],
+    ];
+    for (const [txt, pret, want] of PRICE) {
+      const out = validateExtraction({ ...blank, piese: [{ denumire: "Racletă", cod: "", cantitate: "1", pret }] }, txt)!;
+      assert.equal(out.piese[0]?.pret, want, `price: ${txt}`);
+    }
+    // Motor aspirație repro still leaves only Racletă x1.
+    const repro = validateExtraction({ ...blank, client: "Hotel Continental", modelUtilaj: "Nilfisk SC500", piese: [
+      { denumire: "Motor aspirație", cod: "", cantitate: "2", pret: "" },
+      { denumire: "Racletă spate", cod: "", cantitate: "2", pret: "" },
+      { denumire: "Continental motor", cod: "", cantitate: "2", pret: "" },
+      { denumire: "Racleta", cod: "", cantitate: "2", pret: "" },
+      { denumire: "Racletă", cod: "", cantitate: "2", pret: "" },
+    ] }, "Hotel Continental, Nilfisk SC500 seria SN-998877, nu aspiră apa, am schimbat racleta, două ore manoperă, 35 km")!;
+    assert.deepEqual(repro.piese.map((p) => [p.denumire, p.cantitate]), [["Racleta", "1"]]);
+  }
+
   console.log("smoke-voice-extract: mocked OK");
 }
 

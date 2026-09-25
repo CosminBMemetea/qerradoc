@@ -337,27 +337,59 @@ function sigWords(s: string): string[] {
     .filter((t) => t && !STOP.has(t) && (t.length >= 3 || /\d/.test(t)));
 }
 
-/** Light stemming: same word modulo a short inflection ending (racletă/racleta, szczotkę/szczotka). */
-/** Romanian vowel alternations (roată/roți, seară/seri, poartă/porți). */
-function foldAlt(w: string): string {
-  return w.replace(/oa/g, "o").replace(/ea/g, "e");
+/*
+ * Inflection stripper (input already diacritic-folded by norm(): ă→a, ț→t,
+ * ș→s, ę→e, ó→o, ł→l). Romanian alternations oa→o, ea→e first, then an
+ * optional definite article (-ului/-lor/-le/-ul), then an optional
+ * plural/case ending (RO -uri/-ele/-ile/-ii/-ea/-e/-i/-a, PL -ami/-ow/-y/
+ * -i/-e/-a, EN -es/-s). Endings are ambiguous (garnitur-i vs furtun-uri),
+ * so every valid strip is kept as a candidate stem; stems are ≥ 3 letters.
+ */
+const ARTICLE_END = ["ului", "lor", "le", "ul"];
+const INFLECT_END = ["ilor", "elor", "ami", "uri", "ele", "ile", "ow", "ii", "ea", "es", "e", "i", "a", "y", "s"];
+
+export function stemCandidates(w0: string): string[] {
+  const w = w0.replace(/oa/g, "o").replace(/ea(?=.)/g, "e");
+  if (/\d/.test(w)) return [w];
+  const cut = (x: string, ends: string[]) =>
+    ends.filter((e) => x.endsWith(e) && x.length - e.length >= 3).map((e) => x.slice(0, -e.length));
+  const base = [w, ...cut(w, ARTICLE_END)];
+  const out = new Set<string>();
+  for (const b of base) {
+    out.add(b);
+    cut(b, INFLECT_END).forEach((x) => out.add(x));
+  }
+  return Array.from(out);
 }
 
+/** Canonical stem (shortest candidate) — for display-independent keys. */
+export function stemWord(w: string): string {
+  return stemCandidates(w).sort((a, b) => a.length - b.length)[0];
+}
+
+/**
+ * Same word modulo inflection: a shared candidate stem, or one stem = the
+ * other plus a single trailing u/o/i (filtru/filtr-e, cablu/cabl-ul,
+ * koło/koł-a, baterie/bateri-ile). Never a loose prefix.
+ */
 function stemEq(a0: string, b0: string): boolean {
   if (a0 === b0) return true;
-  const a = foldAlt(a0);
-  const b = foldAlt(b0);
+  const A = stemCandidates(a0);
+  const B = stemCandidates(b0);
+  for (const a of A)
+    for (const b of B) {
+      if (a === b) return true;
+      const [s, l] = a.length <= b.length ? [a, b] : [b, a];
+      if (s.length >= 3 && l.length === s.length + 1 && l.startsWith(s) && /[uoi]$/.test(l)) return true;
+    }
+  return false;
+}
+
+/** Strict: the two words share a candidate stem (used for de-duplication). */
+function stemSame(a: string, b: string): boolean {
   if (a === b) return true;
-  const n = Math.min(a.length, b.length);
-  if (n < 3) return false;
-  let p = 0;
-  while (p < n && a[p] === b[p]) p++;
-  const diff = Math.abs(a.length - b.length);
-  // Very short words: whole word + at most one extra letter (sac/saci).
-  if (n === 3) return p === 3 && diff <= 1;
-  // Short words: a 3-letter stem is enough (roată→rot/roți, gumy/guma, perie/perii).
-  if (n <= 5) return p >= 3 && p >= n - 2 && diff <= 3;
-  return p >= Math.max(4, n - 2) && diff <= 3;
+  const B = new Set(stemCandidates(b));
+  return stemCandidates(a).some((x) => B.has(x));
 }
 
 /**
@@ -419,12 +451,13 @@ export function partQuantityInText(name: string, source: string): Set<number> {
 const FIELD_UNIT =
   /^(?:km|kilomet[a-z]*|kilometr[a-z]*|ore|ora|orei|h|hr|hrs|hour|hours|godz[a-z]*|min|mins|minute|minut[a-z]*|mth|motogodzin[a-z]*)$/;
 const CURRENCY = /^(?:lei|ron|eur|euro|€|zl|pln|gbp|£|usd|\$)$/;
+const METER_KW = /^(?:contor|contorul|licznik[a-z]*|meter|hourmeter|motogodzin[a-z]*)$/;
 const PRICE_KW = /^(?:pret|pretul|price|priced|cost|costs|costa|costat|koszt|kosztuje|kosztowal[a-z]*|cena|cene|za|at|for)$/;
 
 /**
  * Prices the text states for a part: a number with a currency ("150 lei",
- * "€38") or price word before it ("preț 150", "za 120"), or right after a
- * mention of the part ("racleta 99"). A number attached to another field's
+ * "€38") or price word before it ("preț 150", "za 120"), or a plain number
+ * immediately after the part ("racleta 85") that isn't another item's count. A number attached to another field's
  * unit ("99 km", "4 ore", "2 h", "30 min") is never a price.
  */
 export function partPriceInText(name: string, source: string): Set<number> {
@@ -440,13 +473,18 @@ export function partPriceInText(name: string, source: string): Set<number> {
     const next = toks[i + 1] || "";
     if (FIELD_UNIT.test(next)) return;
     const prev = toks.slice(Math.max(0, i - 2), i);
+    // "contor 1842" / "licznik 1842" / "meter 2105" is the hour meter.
+    if (prev.some((p) => METER_KW.test(p))) return;
     const val = Number(tk.replace(",", "."));
-    if (
-      CURRENCY.test(next) ||
-      prev.some((p) => CURRENCY.test(p) || PRICE_KW.test(p)) ||
-      toks.slice(Math.max(0, i - 4), i).some((p) => words.some((w) => stemEq(w, p)))
-    )
+    if (CURRENCY.test(next) || prev.some((p) => CURRENCY.test(p) || PRICE_KW.test(p))) {
       out.add(val);
+      return;
+    }
+    // Plain number: only right after the part (1–2 tokens) and not the count
+    // of another item ("racleta și 2 perii").
+    const nearPart = prev.some((p) => words.some((w) => stemEq(w, p)));
+    const nextIsWord = /^[a-z]/.test(next) && !CURRENCY.test(next);
+    if (nearPart && !nextIsWord) out.add(val);
   });
   return out;
 }
@@ -457,7 +495,9 @@ function dedupeParts(parts: ExtractedPart[]): ExtractedPart[] {
   const same = (a: string, b: string) => {
     const A = sigWords(a);
     const B = sigWords(b);
-    return A.length === B.length && A.every((w) => B.some((x) => stemEq(w, x)));
+    // Full normalized names equal after the stemmer — never a fuzzy prefix
+    // (Piston/Pistol, Motor/Motoraș, Cablu/Cablaj stay separate).
+    return A.length === B.length && A.every((w, k) => stemSame(w, B[k]));
   };
   for (const p of parts) {
     const hit = out.find((q) => same(q.denumire, p.denumire));
