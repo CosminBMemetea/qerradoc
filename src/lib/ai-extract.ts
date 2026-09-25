@@ -338,14 +338,26 @@ function sigWords(s: string): string[] {
 }
 
 /** Light stemming: same word modulo a short inflection ending (racletă/racleta, szczotkę/szczotka). */
-function stemEq(a: string, b: string): boolean {
+/** Romanian vowel alternations (roată/roți, seară/seri, poartă/porți). */
+function foldAlt(w: string): string {
+  return w.replace(/oa/g, "o").replace(/ea/g, "e");
+}
+
+function stemEq(a0: string, b0: string): boolean {
+  if (a0 === b0) return true;
+  const a = foldAlt(a0);
+  const b = foldAlt(b0);
   if (a === b) return true;
   const n = Math.min(a.length, b.length);
   if (n < 3) return false;
   let p = 0;
   while (p < n && a[p] === b[p]) p++;
-  if (n <= 4) return p >= n - 1 && Math.abs(a.length - b.length) <= 1;
-  return p >= Math.max(4, n - 2) && Math.abs(a.length - b.length) <= 3;
+  const diff = Math.abs(a.length - b.length);
+  // Very short words: whole word + at most one extra letter (sac/saci).
+  if (n === 3) return p === 3 && diff <= 1;
+  // Short words: a 3-letter stem is enough (roată→rot/roți, gumy/guma, perie/perii).
+  if (n <= 5) return p >= 3 && p >= n - 2 && diff <= 3;
+  return p >= Math.max(4, n - 2) && diff <= 3;
 }
 
 /**
@@ -404,6 +416,62 @@ export function partQuantityInText(name: string, source: string): Set<number> {
   return out;
 }
 
+const FIELD_UNIT =
+  /^(?:km|kilomet[a-z]*|kilometr[a-z]*|ore|ora|orei|h|hr|hrs|hour|hours|godz[a-z]*|min|mins|minute|minut[a-z]*|mth|motogodzin[a-z]*)$/;
+const CURRENCY = /^(?:lei|ron|eur|euro|€|zl|pln|gbp|£|usd|\$)$/;
+const PRICE_KW = /^(?:pret|pretul|price|priced|cost|costs|costa|costat|koszt|kosztuje|kosztowal[a-z]*|cena|cene|za|at|for)$/;
+
+/**
+ * Prices the text states for a part: a number with a currency ("150 lei",
+ * "€38") or price word before it ("preț 150", "za 120"), or right after a
+ * mention of the part ("racleta 99"). A number attached to another field's
+ * unit ("99 km", "4 ore", "2 h", "30 min") is never a price.
+ */
+export function partPriceInText(name: string, source: string): Set<number> {
+  const out = new Set<number>();
+  const words = sigWords(name);
+  const folded = Array.from(source || "")
+    .map((c) => (c === "ł" || c === "Ł" ? "l" : c.normalize("NFD")[0]))
+    .join("")
+    .toLowerCase();
+  const toks = folded.match(/\d+(?:[.,]\d+)?|[a-z]+|[€£$]/g) || [];
+  toks.forEach((tk, i) => {
+    if (!/^\d/.test(tk)) return;
+    const next = toks[i + 1] || "";
+    if (FIELD_UNIT.test(next)) return;
+    const prev = toks.slice(Math.max(0, i - 2), i);
+    const val = Number(tk.replace(",", "."));
+    if (
+      CURRENCY.test(next) ||
+      prev.some((p) => CURRENCY.test(p) || PRICE_KW.test(p)) ||
+      toks.slice(Math.max(0, i - 4), i).some((p) => words.some((w) => stemEq(w, p)))
+    )
+      out.add(val);
+  });
+  return out;
+}
+
+/** Same part twice ("Racletă" + "Racleta"): merge, keep max qty / a traced price. */
+function dedupeParts(parts: ExtractedPart[]): ExtractedPart[] {
+  const out: ExtractedPart[] = [];
+  const same = (a: string, b: string) => {
+    const A = sigWords(a);
+    const B = sigWords(b);
+    return A.length === B.length && A.every((w) => B.some((x) => stemEq(w, x)));
+  };
+  for (const p of parts) {
+    const hit = out.find((q) => same(q.denumire, p.denumire));
+    if (!hit) {
+      out.push({ ...p });
+      continue;
+    }
+    if (Number(p.cantitate) > Number(hit.cantitate)) hit.cantitate = p.cantitate;
+    if (!hit.pret && p.pret) hit.pret = p.pret;
+    if (!hit.cod && p.cod) hit.cod = p.cod;
+  }
+  return out;
+}
+
 /** Meaningful words of a value must appear (as a stem) in the source text. */
 function sharesWords(value: string, source: string): boolean {
   if (!value) return true;
@@ -457,10 +525,11 @@ export function validateExtraction(
           const q = numStr(o.cantitate);
           return !q || q === "1" ? "1" : traceableNumber(q, partQuantityInText(denumire, sourceText)) || "1";
         })(),
-        pret: traceableNumber(numStr(o.pret), nums),
+        pret: traceableNumber(numStr(o.pret), partPriceInText(denumire, sourceText)),
       });
     }
   }
+  const pieseOut = dedupeParts(piese);
 
   return {
     // Grounded AND every distinctive word named in the text (no grabbed catalog hint).
@@ -480,7 +549,7 @@ export function validateExtraction(
     observatii: str(r.observatii, 1200),
     manoperaOre: traceableNumber(numStr(r.manoperaOre), nums),
     deplasareKm: traceableNumber(numStr(r.deplasareKm), nums),
-    piese,
+    piese: pieseOut,
   };
 }
 

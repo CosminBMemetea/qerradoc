@@ -222,6 +222,49 @@ function mocked() {
     assert.deepEqual([h.manoperaOre, h.deplasareKm, h.oreFunctionare], ["", "", ""], "1 via articles dropped");
   }
 
+  // 306 polish: short RO stems / vowel alternation, price borrowing, de-dup.
+  {
+    const kept = (txt: string, name: string) =>
+      validateExtraction({ ...blank, piese: [{ denumire: name, cod: "", cantitate: "1", pret: "" }] }, txt)!.piese.length === 1;
+    assert.ok(kept("am schimbat roțile", "Roată"), "roată/roți");
+    assert.ok(kept("am schimbat roata din spate", "Roată"));
+    assert.ok(kept("am schimbat două perii", "Perie"), "perie/perii");
+    assert.ok(kept("am schimbat poarta", "Poartă"));
+    assert.ok(kept("wymieniłem gumy", "Guma"));
+    assert.ok(kept("am pus saci noi", "Sac"));
+    assert.ok(!kept("nu aspiră apa, am schimbat racleta", "Motor aspirație"), "Motor aspirație repro still dropped");
+    assert.ok(!kept("am schimbat racleta", "Rotor"), "no 3-letter false friend");
+    assert.ok(!kept("apa murdară", "Apărătoare"));
+    // Price must not borrow a km / hours number.
+    const price = (txt: string, pret: string) =>
+      validateExtraction({ ...blank, piese: [{ denumire: "Racletă", cod: "", cantitate: "1", pret }] }, txt)!.piese[0]?.pret;
+    assert.equal(price("am schimbat racleta, 4 ore manoperă, 99 km", "99"), "", "99 km is not a price");
+    assert.equal(price("am schimbat racleta, 4 ore manoperă, 99 km", "4"), "", "4 ore is not a price");
+    assert.equal(price("am schimbat racleta, 30 min", "30"), "");
+    assert.equal(price("am schimbat racleta 99 lei, 99 km", "99"), "99", "currency context");
+    assert.equal(price("racleta preț 150, 2 ore", "150"), "150", "price keyword");
+    assert.equal(price("am schimbat racleta 85, 2 ore", "85"), "85", "number right after the part");
+    assert.equal(price("am schimbat racleta, €38", "38"), "38");
+    assert.equal(price("am schimbat racleta, 38 EUR", "38"), "38");
+    assert.equal(price("am schimbat racleta, 12,50 lei", "12.5"), "12.5");
+    // De-dup: same part twice → one row, max traced qty, traced price kept.
+    const dd = validateExtraction(
+      { ...blank, piese: [
+        { denumire: "Racletă", cod: "", cantitate: "1", pret: "" },
+        { denumire: "Racleta", cod: "R-1", cantitate: "2", pret: "120" },
+        { denumire: "Perie cilindrică", cod: "", cantitate: "1", pret: "" },
+      ] },
+      "am schimbat două raclete la 120 lei bucata cod R-1, am schimbat peria cilindrică"
+    )!;
+    assert.deepEqual(dd.piese.map((p) => [p.denumire, p.cantitate, p.pret, p.cod]), [["Racletă", "2", "120", "R-1"], ["Perie cilindrică", "1", "", ""]]);
+    // Distinct parts with the same head stay separate.
+    const two = validateExtraction({ ...blank, piese: [
+      { denumire: "Perie cilindrică", cod: "", cantitate: "1", pret: "" },
+      { denumire: "Perie laterală", cod: "", cantitate: "1", pret: "" },
+    ] }, "am schimbat peria cilindrică și peria laterală")!;
+    assert.equal(two.piese.length, 2);
+  }
+
   console.log("smoke-voice-extract: mocked OK");
 }
 
