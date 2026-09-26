@@ -452,6 +452,7 @@ const FIELD_UNIT =
   /^(?:km|kilomet[a-z]*|kilometr[a-z]*|ore|ora|orei|h|hr|hrs|hour|hours|godz[a-z]*|min|mins|minute|minut[a-z]*|mth|motogodzin[a-z]*)$/;
 const CURRENCY = /^(?:lei|ron|eur|euro|€|zl|pln|gbp|£|usd|\$)$/;
 const METER_KW = /^(?:contor|contorul|licznik[a-z]*|meter|hourmeter|motogodzin[a-z]*)$/;
+const SEPARATOR_WORD = /^(?:si|and|oraz|plus)$/;
 const PRICE_KW = /^(?:pret|pretul|price|priced|cost|costs|costa|costat|koszt|kosztuje|kosztowal[a-z]*|cena|cene|za|at|for)$/;
 
 /**
@@ -467,7 +468,8 @@ export function partPriceInText(name: string, source: string): Set<number> {
     .map((c) => (c === "ł" || c === "Ł" ? "l" : c.normalize("NFD")[0]))
     .join("")
     .toLowerCase();
-  const toks = folded.match(/\d+(?:[.,]\d+)?|[a-z]+|[€£$]/g) || [];
+  // Separators (",", ";") are kept as tokens: they end a price's scope.
+  const toks = folded.match(/\d+(?:[.,]\d+)?|[a-z]+|[€£$]|[,;]/g) || [];
   toks.forEach((tk, i) => {
     if (!/^\d/.test(tk)) return;
     const next = toks[i + 1] || "";
@@ -483,7 +485,9 @@ export function partPriceInText(name: string, source: string): Set<number> {
     // Plain number: only right after the part (1–2 tokens) and not the count
     // of another item ("racleta și 2 perii").
     const nearPart = prev.some((p) => words.some((w) => stemEq(w, p)));
-    const nextIsWord = /^[a-z]/.test(next) && !CURRENCY.test(next);
+    // A separator (",", ";", "și", "and", "oraz") ends the scope: "racleta 85, peria 40"
+    // keeps 85; "racleta și 2 perii" (next word = another item) does not.
+    const nextIsWord = /^[a-z]/.test(next) && !CURRENCY.test(next) && !SEPARATOR_WORD.test(next);
     if (nearPart && !nextIsWord) out.add(val);
   });
   return out;
@@ -557,6 +561,18 @@ export function validateExtraction(
       if (!denumire || !partTraced(denumire, sourceText, [client, modelUtilaj])) continue;
       let cod = str(o.cod, 60);
       if (cod && !compact(sourceText).includes(compact(cod))) cod = "";
+      const prices = partPriceInText(denumire, sourceText);
+      let pret = traceableNumber(numStr(o.pret), prices);
+      // A plain ≤4-digit "code" that the text uses as this part's price or
+      // quantity is not a code ("racleta 85" → cod 85). Real codes
+      // (6.905-236.0, 4.037-129, SN-…, alphanumeric) are kept.
+      if (/^\d{1,4}$/.test(cod)) {
+        const n = Number(cod);
+        if (prices.has(n) || partQuantityInText(denumire, sourceText).has(n)) {
+          if (!pret && prices.has(n)) pret = cod;
+          cod = "";
+        }
+      }
       piese.push({
         denumire,
         cod,
@@ -565,7 +581,7 @@ export function validateExtraction(
           const q = numStr(o.cantitate);
           return !q || q === "1" ? "1" : traceableNumber(q, partQuantityInText(denumire, sourceText)) || "1";
         })(),
-        pret: traceableNumber(numStr(o.pret), partPriceInText(denumire, sourceText)),
+        pret,
       });
     }
   }

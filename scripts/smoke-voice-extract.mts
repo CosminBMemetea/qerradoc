@@ -356,6 +356,37 @@ function mocked() {
     assert.deepEqual(repro.piese.map((p) => [p.denumire, p.cantitate]), [["Racleta", "1"]]);
   }
 
+  // b18 A/F: separators end a price's scope; numeric "codes" that are prices.
+  {
+    const TXT = "am schimbat racleta 85, peria 40";
+    const run = (piese: { denumire: string; cod: string; cantitate: string; pret: string }[], txt = TXT) =>
+      validateExtraction({ ...blank, piese }, txt)!.piese.map((p) => [p.denumire, p.cod, p.pret]);
+    // A: both prices kept (comma / și / ; / and end the scope).
+    assert.deepEqual(run([{ denumire: "Racletă", cod: "", cantitate: "1", pret: "85" }, { denumire: "Perie", cod: "", cantitate: "1", pret: "40" }]),
+      [["Racletă", "", "85"], ["Perie", "", "40"]]);
+    for (const t of ["am schimbat racleta 85 și peria 40", "am schimbat racleta 85; peria 40"]) {
+      assert.deepEqual(run([{ denumire: "Racletă", cod: "", cantitate: "1", pret: "85" }, { denumire: "Perie", cod: "", cantitate: "1", pret: "40" }], t),
+        [["Racletă", "", "85"], ["Perie", "", "40"]], t);
+    }
+    assert.deepEqual(run([{ denumire: "Squeegee blade", cod: "", cantitate: "1", pret: "85" }, { denumire: "Brush", cod: "", cantitate: "1", pret: "40" }], "replaced the squeegee blade 85 and the brush 40"),
+      [["Squeegee blade", "", "85"], ["Brush", "", "40"]]);
+    // Still no price when the next word is another item's count.
+    assert.deepEqual(run([{ denumire: "Racletă", cod: "", cantitate: "1", pret: "2" }], "am schimbat racleta și 2 perii"), [["Racletă", "", ""]]);
+    // F: model put 85/40 into cod → code dropped, moved to price.
+    assert.deepEqual(run([{ denumire: "Racletă", cod: "85", cantitate: "1", pret: "" }, { denumire: "Perie", cod: "40", cantitate: "1", pret: "" }]),
+      [["Racletă", "", "85"], ["Perie", "", "40"]]);
+    // Code equal to a stated quantity → dropped, not a price.
+    assert.deepEqual(run([{ denumire: "Perie", cod: "2", cantitate: "2", pret: "" }], "am schimbat 2 perii"), [["Perie", "", ""]]);
+    // Real codes kept.
+    const codes = run([
+      { denumire: "Racletă", cod: "6.905-236.0", cantitate: "1", pret: "" },
+      { denumire: "Perie", cod: "4.037-129", cantitate: "1", pret: "" },
+      { denumire: "Filtru", cod: "SN-4471", cantitate: "1", pret: "" },
+      { denumire: "Furtun", cod: "8618", cantitate: "1", pret: "" },
+    ], "am schimbat racleta cod 6.905-236.0, peria 4.037-129, filtru SN-4471, furtun cod 8618 la 120 lei");
+    assert.deepEqual(codes.map((c) => c[1]), ["6.905-236.0", "4.037-129", "SN-4471", "8618"], "real codes kept");
+  }
+
   console.log("smoke-voice-extract: mocked OK");
 }
 
