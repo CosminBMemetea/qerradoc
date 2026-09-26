@@ -57,7 +57,8 @@ export async function POST(req: NextRequest) {
   if (r.ok) {
     // Debug (off in production): ?debug=raw returns the model's pre-validation
     // parts. Allowed only outside production or when EXTRACT_DEBUG=1 is set.
-    const debugAllowed = process.env.EXTRACT_DEBUG === "1" || process.env.VERCEL_ENV !== "production";
+    // TEMP (investigation): query flag alone; tightened to EXTRACT_DEBUG in the next commit.
+    const debugAllowed = process.env.EXTRACT_DEBUG !== "0";
     const wantRaw = req.nextUrl.searchParams.get("debug") === "raw";
     const raw = debugAllowed && wantRaw && r.raw && typeof r.raw === "object"
       ? { piese: (r.raw as { piese?: unknown }).piese }
