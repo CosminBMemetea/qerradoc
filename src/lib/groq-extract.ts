@@ -26,11 +26,11 @@ export const TOTAL_BUDGET_MS = 19_000;
 const ATTEMPT_MAX_MS = 9_000;
 
 type Attempt =
-  | { ok: true; data: Extraction }
+  | { ok: true; data: Extraction; raw: unknown }
   | { ok: false; reason: ExtractFailReason; status?: number; retryAfterMs?: number; detail?: string };
 
 export type GroqChainResult =
-  | { ok: true; model: string; data: Extraction; attempts: string[] }
+  | { ok: true; model: string; data: Extraction; attempts: string[]; raw?: unknown }
   | { ok: false; reason: ExtractFailReason; status?: number; attempts: string[] };
 
 export type GroqDeps = {
@@ -103,7 +103,7 @@ async function attempt(
       return { ok: false, reason: "invalid_output" };
     }
     const data = validateExtraction(parsed, req.text, req.hints);
-    return data ? { ok: true, data } : { ok: false, reason: "invalid_output" };
+    return data ? { ok: true, data, raw: parsed } : { ok: false, reason: "invalid_output" };
   } catch (e) {
     const aborted = ctrl.signal.aborted || (e instanceof Error && e.name === "AbortError");
     return { ok: false, reason: aborted ? "timeout" : "network", detail: e instanceof Error ? e.message : String(e) };
@@ -131,7 +131,7 @@ export async function groqExtract(
   };
 
   let a = await run(primary);
-  if (a.ok) return { ok: true, model: primary, data: a.data, attempts };
+  if (a.ok) return { ok: true, model: primary, data: a.data, attempts, raw: a.raw };
   let last = a;
 
   if (retryable(a)) {
@@ -139,14 +139,14 @@ export async function groqExtract(
     if (left() > wait + 1500) {
       await deps.sleep(wait);
       a = await run(primary);
-      if (a.ok) return { ok: true, model: primary, data: a.data, attempts };
+      if (a.ok) return { ok: true, model: primary, data: a.data, attempts, raw: a.raw };
       last = a;
     }
   }
   // Auth problems won't be fixed by another model.
   if (last.reason !== "auth" && small !== primary && left() > 1500) {
     a = await run(small);
-    if (a.ok) return { ok: true, model: small, data: a.data, attempts };
+    if (a.ok) return { ok: true, model: small, data: a.data, attempts, raw: a.raw };
     // Report the primary model's failure (root cause); `attempts` lists every step.
   }
   return { ok: false, reason: last.reason, status: last.status, attempts };

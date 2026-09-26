@@ -47,7 +47,7 @@ export type ExtractFailReason =
   | `http_${number}`;
 
 export type ExtractResponse =
-  | { ok: true; source: "llm"; model: string; data: Extraction; attempts?: string[] }
+  | { ok: true; source: "llm"; model: string; data: Extraction; attempts?: string[]; raw?: { piese?: unknown } }
   | {
       ok: false;
       error: "missing_key" | "bad_request" | "upstream" | "invalid_output";

@@ -54,7 +54,16 @@ export async function POST(req: NextRequest) {
     model: process.env.GROQ_EXTRACT_MODEL || PRIMARY_MODEL,
     fallbackModel: process.env.GROQ_EXTRACT_FALLBACK_MODEL || FALLBACK_MODEL,
   });
-  if (r.ok) return reply({ ok: true, source: "llm", model: r.model, data: r.data, attempts: r.attempts });
+  if (r.ok) {
+    // Debug (off in production): ?debug=raw returns the model's pre-validation
+    // parts. Allowed only outside production or when EXTRACT_DEBUG=1 is set.
+    const debugAllowed = process.env.EXTRACT_DEBUG === "1" || process.env.VERCEL_ENV !== "production";
+    const wantRaw = req.nextUrl.searchParams.get("debug") === "raw";
+    const raw = debugAllowed && wantRaw && r.raw && typeof r.raw === "object"
+      ? { piese: (r.raw as { piese?: unknown }).piese }
+      : undefined;
+    return reply({ ok: true, source: "llm", model: r.model, data: r.data, attempts: r.attempts, ...(raw ? { raw } : {}) });
+  }
   return reply(
     {
       ok: false,
