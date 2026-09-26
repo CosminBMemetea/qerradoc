@@ -94,10 +94,22 @@ export const EXTRACTION_JSON_SCHEMA = {
         additionalProperties: false,
         required: ["denumire", "cod", "cantitate", "pret"],
         properties: {
-          denumire: { type: "string" },
-          cod: { type: "string" },
-          cantitate: { type: "string" },
-          pret: { type: "string" },
+          denumire: { type: "string", description: "Part name (noun), capitalised." },
+          cod: {
+            type: "string",
+            description:
+              "Part/catalogue code only if explicitly said (e.g. 6.905-236.0, 'cod 8618'). A plain number after the part name is its price, not a code. Otherwise \"\".",
+          },
+          cantitate: {
+            type: "string",
+            description:
+              "Explicit count only ('2 perii', 'dwie szczotki', 'x2', '3 buc'). A number said right after the part name is its price, never the quantity. Default \"1\".",
+          },
+          pret: {
+            type: "string",
+            description:
+              "Unit price as a number, without currency. A number said right after the part name ('racleta 85', 'peria 40 lei', 'squeegee 85 euro', 'po 40 zł') is that part's unit price. Never invent a price: \"\" if none was said.",
+          },
         },
       },
     },
@@ -114,7 +126,8 @@ Reguli stricte:
 - tip: "Reparație" pentru reparații/înlocuiri de piese, "Revizie" pentru revizie/mentenanță periodică, "Constatare" pentru doar diagnostic, "Punere în funcțiune" pentru instalare/PIF; altfel "".
 - reclamatie = problema raportată (defectul). observatii = lucrările efectuate (ce a făcut tehnicianul), în cuvintele lui.
 - manoperaOre = numărul de ore de manoperă ca cifră (ex. "două ore" → "2", "o oră și jumătate" → "1.5"). deplasareKm = kilometri ca cifră. oreFunctionare = ore de funcționare ale utilajului (contor) ca cifră.
-- piese = OBLIGATORIU fiecare piesă/componentă pe care tehnicianul spune că a schimbat-o, înlocuit-o sau montat-o (ex. „am schimbat peria și racleta” → două piese: "Perie", "Racletă"). Câmpuri: denumire (substantivul piesei, cu majusculă), cod (doar dacă e spus), cantitate ca cifră (implicit "1"), pret (doar dacă e spus, ca cifră). Piesele apar și în piese, și în observatii.
+- piese = OBLIGATORIU fiecare piesă/componentă pe care tehnicianul spune că a schimbat-o, înlocuit-o sau montat-o (ex. „am schimbat peria și racleta” → două piese: "Perie", "Racletă"). Câmpuri: denumire (substantivul piesei, cu majusculă), cod (doar dacă e spus explicit, ex. „cod 8618”, „6.905-236.0”), cantitate ca cifră (implicit "1"), pret (doar dacă e spus, ca cifră). Piesele apar și în piese, și în observatii.
+- Prețuri pe piesă: un număr spus imediat după numele piesei este prețul unitar al acelei piese, nu cantitatea și nu codul (ex. „am schimbat racleta 85, peria 40” → Racletă pret "85" cantitate "1", Perie pret "40" cantitate "1"; „racleta 85 lei și peria 40 lei” → la fel). cantitate este DOAR un număr de bucăți spus explicit înaintea piesei sau cu „x”/„buc” („2 perii”, „x2”, „3 buc”); „racleta și 2 perii” → Perie cantitate "2", fără preț. Nu inventa prețuri: dacă nu e spus un preț, pret "".
 - Cifrele folosesc punct zecimal, fără unități.`,
   en: `You assist a service technician for cleaning equipment. You receive a dictated sentence or a message and fill in the fields of a service job sheet.
 Strict rules:
@@ -125,7 +138,8 @@ Strict rules:
 - tip: "Reparație" for repairs/part replacements, "Revizie" for service/periodic maintenance, "Constatare" for diagnosis only, "Punere în funcțiune" for installation/commissioning; otherwise "". (These values are fixed codes — keep them exactly.)
 - reclamatie = the reported problem (fault). observatii = the work done (what the technician did), in their words.
 - manoperaOre = labour hours as a number (e.g. "two hours" → "2", "an hour and a half" → "1.5"). deplasareKm = kilometres as a number. oreFunctionare = machine hour-meter reading as a number.
-- piese = REQUIRED: every part/component the technician says they replaced, changed or fitted (e.g. "replaced the brush and the squeegee" → two parts: "Brush", "Squeegee"). Fields: denumire (the part noun, capitalised), cod (only if stated), cantitate as a number (default "1"), pret (only if stated, as a number). Parts appear both in piese and in observatii.
+- piese = REQUIRED: every part/component the technician says they replaced, changed or fitted (e.g. "replaced the brush and the squeegee" → two parts: "Brush", "Squeegee"). Fields: denumire (the part noun, capitalised), cod (only if explicitly stated, e.g. "code 8618", "6.905-236.0"), cantitate as a number (default "1"), pret (only if stated, as a number). Parts appear both in piese and in observatii.
+- Per-part prices: a number said right after a part name is that part's unit price, not its quantity and not a code (e.g. "replaced the squeegee 85, the brush 40" → Squeegee pret "85" cantitate "1", Brush pret "40" cantitate "1"; "replaced the squeegee 85 euro" → pret "85"). cantitate is ONLY an explicit count said before the part or with "x"/"pcs" ("2 brushes", "x2", "3 pcs"); "the squeegee and 2 brushes" → Brush cantitate "2", no price. Never invent prices: if no price is said, pret "".
 - Numbers use a decimal point and no units.`,
   pl: `Pomagasz serwisantowi maszyn czyszczących. Otrzymujesz podyktowane zdanie lub wiadomość i wypełniasz pola karty serwisowej.
 Ścisłe zasady:
@@ -136,7 +150,8 @@ Strict rules:
 - tip: "Reparație" dla napraw/wymiany części, "Revizie" dla przeglądu/konserwacji okresowej, "Constatare" dla samej diagnozy, "Punere în funcțiune" dla instalacji/uruchomienia; w przeciwnym razie "". (To stałe kody — zachowaj je dokładnie.)
 - reclamatie = zgłoszony problem (usterka). observatii = wykonane prace (co zrobił serwisant), jego słowami.
 - manoperaOre = godziny robocizny jako liczba (np. „dwie godziny” → "2", „półtorej godziny” → "1.5"). deplasareKm = kilometry jako liczba. oreFunctionare = stan licznika motogodzin jako liczba.
-- piese = OBOWIĄZKOWO każda część/podzespół, którą serwisant według swoich słów wymienił lub zamontował (np. „wymieniłem szczotkę i gumy” → dwie części: "Szczotka", "Gumy"). Pola: denumire (nazwa części w mianowniku, wielką literą), cod (tylko jeśli podano), cantitate jako liczba (domyślnie "1"), pret (tylko jeśli podano, jako liczba). Części występują zarówno w piese, jak i w observatii.
+- piese = OBOWIĄZKOWO każda część/podzespół, którą serwisant według swoich słów wymienił lub zamontował (np. „wymieniłem szczotkę i gumy” → dwie części: "Szczotka", "Gumy"). Pola: denumire (nazwa części w mianowniku, wielką literą), cod (tylko jeśli wyraźnie podano, np. „kod 8618”, „6.905-236.0”), cantitate jako liczba (domyślnie "1"), pret (tylko jeśli podano, jako liczba). Części występują zarówno w piese, jak i w observatii.
+- Ceny części: liczba podana zaraz po nazwie części to jej cena jednostkowa, a nie ilość ani kod (np. „wymieniłem gumy 85, szczotkę 40” → Gumy pret "85" cantitate "1", Szczotka pret "40" cantitate "1"; „dwie szczotki po 40 zł” → Szczotka cantitate "2", pret "40"). cantitate to TYLKO wyraźnie podana liczba sztuk przed częścią lub z „x”/„szt” („2 szczotki”, „dwie szczotki”, „x2”); „gumy i 2 szczotki” → Szczotka cantitate "2", bez ceny. Nie wymyślaj cen: jeśli cena nie padła, pret "".
 - Liczby z kropką dziesiętną, bez jednostek.`,
 };
 
@@ -453,7 +468,9 @@ const FIELD_UNIT =
 const CURRENCY = /^(?:lei|ron|eur|euro|€|zl|pln|gbp|£|usd|\$)$/;
 const METER_KW = /^(?:contor|contorul|licznik[a-z]*|meter|hourmeter|motogodzin[a-z]*)$/;
 const SEPARATOR_WORD = /^(?:si|and|oraz|plus)$/;
-const PRICE_KW = /^(?:pret|pretul|price|priced|cost|costs|costa|costat|koszt|kosztuje|kosztowal[a-z]*|cena|cene|za|at|for)$/;
+/** "cod 8618" / "code 8618" / "kod 8618" / "ref 8618": the number is a code, never a price. */
+const CODE_KW = /^(?:cod|codul|code|kod|ref|referinta|reference|part|nr|numar|numer|no)$/;
+const PRICE_KW = /^(?:pret|pretul|price|priced|cost|costs|costa|costat|koszt|kosztuje|kosztowal[a-z]*|cena|cene|za|po|at|for)$/;
 
 /**
  * Prices the text states for a part: a number with a currency ("150 lei",
@@ -477,6 +494,7 @@ export function partPriceInText(name: string, source: string): Set<number> {
     const prev = toks.slice(Math.max(0, i - 2), i);
     // "contor 1842" / "licznik 1842" / "meter 2105" is the hour meter.
     if (prev.some((p) => METER_KW.test(p))) return;
+    if (CODE_KW.test(prev[prev.length - 1] || "")) return;
     const val = Number(tk.replace(",", "."));
     if (CURRENCY.test(next) || prev.some((p) => CURRENCY.test(p) || PRICE_KW.test(p))) {
       out.add(val);
@@ -493,9 +511,39 @@ export function partPriceInText(name: string, source: string): Set<number> {
   return out;
 }
 
+/**
+ * Numbers said directly after a mention of the part ("racleta 85",
+ * "squeegee 85 euro", "szczotki po 40 zł"): the first number within 2 tokens
+ * after the part name (price words may sit in between), before any separator.
+ * Used to rescue a price the model put into cantitate / cod.
+ */
+export function numberRightAfterPart(name: string, source: string): Set<number> {
+  const out = new Set<number>();
+  const words = sigWords(name);
+  if (!words.length) return out;
+  const folded = Array.from(source || "")
+    .map((c) => (c === "ł" || c === "Ł" ? "l" : c.normalize("NFD")[0]))
+    .join("")
+    .toLowerCase();
+  const toks = folded.match(/\d+(?:[.,]\d+)?|[a-z]+|[€£$]|[,;]/g) || [];
+  toks.forEach((tk, i) => {
+    if (!/^[a-z]/.test(tk) || !words.some((w) => stemEq(w, tk))) return;
+    for (let k = i + 1; k <= i + 3 && k < toks.length; k++) {
+      const t = toks[k];
+      if (/^\d/.test(t)) {
+        if (!CODE_KW.test(toks[k - 1])) out.add(Number(t.replace(",", ".")));
+        return;
+      }
+      if (!(PRICE_KW.test(t) || CURRENCY.test(t))) return;
+    }
+  });
+  return out;
+}
+
 /** Same part twice ("Racletă" + "Racleta"): merge, keep max qty / a traced price. */
-function dedupeParts(parts: ExtractedPart[]): ExtractedPart[] {
+function dedupeParts(parts: ExtractedPart[], sourceText = ""): ExtractedPart[] {
   const out: ExtractedPart[] = [];
+  const copies = new Map<ExtractedPart, number>();
   const same = (a: string, b: string) => {
     const A = sigWords(a);
     const B = sigWords(b);
@@ -506,12 +554,21 @@ function dedupeParts(parts: ExtractedPart[]): ExtractedPart[] {
   for (const p of parts) {
     const hit = out.find((q) => same(q.denumire, p.denumire));
     if (!hit) {
-      out.push({ ...p });
+      const q = { ...p };
+      out.push(q);
+      copies.set(q, 1);
       continue;
     }
+    copies.set(hit, (copies.get(hit) || 1) + 1);
     if (Number(p.cantitate) > Number(hit.cantitate)) hit.cantitate = p.cantitate;
     if (!hit.pret && p.pret) hit.pret = p.pret;
     if (!hit.cod && p.cod) hit.cod = p.cod;
+  }
+  // "dwie szczotki" returned as two single entries: the stated count wins
+  // when it equals the number of copies.
+  for (const q of out) {
+    const n = copies.get(q) || 1;
+    if (n > 1 && q.cantitate === "1" && partQuantityInText(q.denumire, sourceText).has(n)) q.cantitate = String(n);
   }
   return out;
 }
@@ -569,23 +626,28 @@ export function validateExtraction(
       if (/^\d{1,4}$/.test(cod)) {
         const n = Number(cod);
         if (prices.has(n) || partQuantityInText(denumire, sourceText).has(n)) {
-          if (!pret && prices.has(n)) pret = cod;
+          if (!pret && prices.has(n) && numberRightAfterPart(denumire, sourceText).has(n)) pret = cod;
           cod = "";
         }
       }
-      piese.push({
-        denumire,
-        cod,
-        // A part named without a count is one piece; any other count must be stated.
-        cantitate: (() => {
-          const q = numStr(o.cantitate);
-          return !q || q === "1" ? "1" : traceableNumber(q, partQuantityInText(denumire, sourceText)) || "1";
-        })(),
-        pret,
-      });
+      // A part named without a count is one piece; any other count must be stated.
+      const qtys = partQuantityInText(denumire, sourceText);
+      const qRaw = numStr(o.cantitate);
+      let cantitate = !qRaw || qRaw === "1" ? "1" : traceableNumber(qRaw, qtys) || "1";
+      // Rescue: the model put the dictated price into cantitate ("racleta 85"
+      // → cantitate 85, pret ""). If that number directly follows the part,
+      // passes the price rule and isn't a stated count, it is the unit price.
+      if (!pret && qRaw && qRaw !== "1") {
+        const n = Number(qRaw);
+        if (!qtys.has(n) && prices.has(n) && numberRightAfterPart(denumire, sourceText).has(n)) {
+          pret = qRaw;
+          cantitate = "1";
+        }
+      }
+      piese.push({ denumire, cod, cantitate, pret });
     }
   }
-  const pieseOut = dedupeParts(piese);
+  const pieseOut = dedupeParts(piese, sourceText);
 
   return {
     // Grounded AND every distinctive word named in the text (no grabbed catalog hint).

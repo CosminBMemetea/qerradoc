@@ -387,6 +387,62 @@ function mocked() {
     assert.deepEqual(codes.map((c) => c[1]), ["6.905-236.0", "4.037-129", "SN-4471", "8618"], "real codes kept");
   }
 
+  {
+    // Dictated per-part prices the model put into cantitate → rescued as pret, qty 1.
+    const v = (piese: unknown[], txt: string) =>
+      validateExtraction({ ...blank, piese }, txt)!.piese.map((p) => `${p.denumire}|${p.cod}|${p.cantitate}|${p.pret}`);
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "", cantitate: "85", pret: "" }, { denumire: "Perie", cod: "", cantitate: "40", pret: "" }], "am schimbat racleta 85, peria 40"),
+      ["Racletă||1|85", "Perie||1|40"],
+      "qty→price rescue"
+    );
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "", cantitate: "85", pret: "" }, { denumire: "Perie", cod: "", cantitate: "40", pret: "" }], "racleta 85 lei și peria 40 lei"),
+      ["Racletă||1|85", "Perie||1|40"]
+    );
+    assert.deepEqual(
+      v([{ denumire: "Squeegee", cod: "", cantitate: "85", pret: "" }], "replaced the squeegee 85 euro"),
+      ["Squeegee||1|85"]
+    );
+    assert.deepEqual(
+      v([{ denumire: "Szczotka", cod: "", cantitate: "2", pret: "40" }], "dwie szczotki po 40 zł"),
+      ["Szczotka||2|40"]
+    );
+    assert.deepEqual(
+      v([{ denumire: "Szczotka", cod: "", cantitate: "1", pret: "40" }, { denumire: "Szczotka", cod: "", cantitate: "1", pret: "40" }], "dwie szczotki po 40 zł"),
+      ["Szczotka||2|40"],
+      "two copies + stated count 2 → qty 2"
+    );
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "", cantitate: "1", pret: "" }, { denumire: "Racleta", cod: "", cantitate: "1", pret: "" }], "am schimbat racleta"),
+      ["Racletă||1|"],
+      "duplicate mention is not a count"
+    );
+    assert.deepEqual(
+      v([{ denumire: "Szczotka", cod: "", cantitate: "40", pret: "" }], "dwie szczotki po 40"),
+      ["Szczotka||1|40"],
+      "'po 40' is a price word"
+    );
+    // A stated count stays a count, no price appears.
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "", cantitate: "1", pret: "" }, { denumire: "Perie", cod: "", cantitate: "2", pret: "" }], "racleta și 2 perii"),
+      ["Racletă||1|", "Perie||2|"]
+    );
+    // Code rescue (F) still works; real codes kept.
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "85", cantitate: "1", pret: "" }, { denumire: "Perie", cod: "40", cantitate: "1", pret: "" }], "am schimbat racleta 85, peria 40"),
+      ["Racletă||1|85", "Perie||1|40"]
+    );
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "8618", cantitate: "1", pret: "" }], "am schimbat racleta cod 8618"),
+      ["Racletă|8618|1|"]
+    );
+    // A number not right after the part is not rescued ("2 ore" is labour).
+    assert.deepEqual(
+      v([{ denumire: "Racletă", cod: "", cantitate: "2", pret: "" }], "am schimbat racleta, 2 ore manoperă"),
+      ["Racletă||1|"]
+    );
+  }
   console.log("smoke-voice-extract: mocked OK");
 }
 
