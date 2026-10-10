@@ -10,7 +10,9 @@ export interface Truck {
 }
 export interface FillUp {
   id: string; truckId: string; time: string; station: string; stationAt: LatLng;
-  gpsAt: LatLng; litres: number; gpsKmSincePrev?: number; priceLei: number; odometerKm: number; card: string;
+  gpsAt: LatLng; litres: number; gpsKmSincePrev?: number;
+  /** precizia coordonatelor stației (km); import CSV la nivel de oraș = 25 */
+  stationPrecisionKm?: number; priceLei: number; odometerKm: number; card: string;
 }
 export interface LevelPoint { min: number; levelL: number; moving: boolean }
 
@@ -96,7 +98,7 @@ export function nearestWaypoint(t: Truck, p: LatLng): Waypoint {
   return t.route.reduce((best, w) => (haversineKm(w.at, p) < haversineKm(best.at, p) ? w : best));
 }
 
-export type Status = "în mers" | "oprit" | "la pompă";
+export type Status = "moving" | "stopped" | "pump";
 interface Phase { kind: "stop" | "drive" | "pump" | "break"; start: number; end: number; kmStart: number; kmEnd: number }
 const SPEED = 64; // km/h medie
 
@@ -124,8 +126,8 @@ export function positionAt(t: Truck, minute: number): Position {
   let km = ph.kmStart;
   if (ph.kind === "drive") km = ph.kmStart + ((minute - ph.start) / (ph.end - ph.start)) * (ph.kmEnd - ph.kmStart);
   const at = pointAtKm(t, km);
-  const status: Status = ph.kind === "drive" ? "în mers" : ph.kind === "pump" ? "la pompă" : "oprit";
-  return { at, status, speedKmh: status === "în mers" ? SPEED : 0, place: nearestWaypoint(t, at).name };
+  const status: Status = ph.kind === "drive" ? "moving" : ph.kind === "pump" ? "pump" : "stopped";
+  return { at, status, speedKmh: status === "moving" ? SPEED : 0, place: nearestWaypoint(t, at).name };
 }
 
 // ---------- alimentări (30 zile) ----------
@@ -191,9 +193,9 @@ export function levelSeries(t: Truck): LevelPoint[] | null {
   const rnd = mulberry32(t.tankL + 5);
   for (let m = 0; m <= DEMO_NOW_MIN; m += 10) {
     const pos = positionAt(t, m);
-    const moving = pos.status === "în mers";
+    const moving = pos.status === "moving";
     if (moving) level -= (SPEED / 6) * (t.normalL100 / 100);
-    if (pos.status === "la pompă" && m >= dayPlan(t).find((p) => p.kind === "pump")!.start + 10 && level < t.tankL * 0.6) level = t.tankL * 0.95;
+    if (pos.status === "pump" && m >= dayPlan(t).find((p) => p.kind === "pump")!.start + 10 && level < t.tankL * 0.6) level = t.tankL * 0.95;
     // AR 45 parcat: scădere bruscă de ~80 L între 02:40 și 03:00, contact oprit (regula b)
     if (t.id === "ar45qrt" && m > 160 && m <= 180) level -= 40;
     pts.push({ min: m, levelL: Math.round(level + (rnd() - 0.5) * 2), moving });

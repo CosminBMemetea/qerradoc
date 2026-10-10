@@ -1,35 +1,31 @@
-import { Card, AlertItem } from "@/components/flota/ui";
-import { RULE_LABEL, type RuleId } from "@/lib/flota/rules";
+import { Card, AlertCard, PageHead } from "@/components/flota/ui";
+import { RULES, ruleTitle, KM_MISMATCH } from "@/lib/flota/rules";
 import { alerts as loadAlerts } from "@/lib/flota/repo";
+import { CONSUMPTION_THRESHOLD, PARKED_DROP_L, STATION_MAX_KM, THEFT_AVG_THRESHOLD } from "@/lib/flota/data";
+import { t, type MsgKey } from "@/lib/flota/i18n";
+import { getLocale } from "@/lib/flota/i18n/server";
 
 export const dynamic = "force-dynamic";
+const DESC_VARS = { "km-nepotrivit": { pct: KM_MISMATCH * 100 }, "card-fara-camion": { km: STATION_MAX_KM }, "scadere-parcat": { litres: PARKED_DROP_L }, "peste-capacitate": {}, "consum-peste-medie": { pct: THEFT_AVG_THRESHOLD * 100 }, "consum-peste-normal": { pct: CONSUMPTION_THRESHOLD * 100 } } as const;
 
 export default async function Alerte() {
+  const loc = getLocale();
   const alerts = await loadAlerts();
-  const rules = Object.keys(RULE_LABEL) as RuleId[];
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-bold">Alerte ({alerts.length})</h1>
-      <Card>
-        <h2 className="font-bold mb-2">Regulile de detecție</h2>
-        <ul className="text-sm text-slate-700 list-disc pl-5 space-y-1">
-          <li><b>Km de pe bon ≠ GPS:</b> km declarați la pompă diferă cu peste 20% de km parcurși după GPS de la alimentarea anterioară.</li>
-          <li><b>Card fără camion:</b> la ora tranzacției, GPS-ul camionului e la peste 5 km de stație.</li>
-          <li><b>Scădere în rezervor, parcat:</b> nivelul scade cu peste 25 L în 30 de minute, cu camionul oprit (senzor viitor, simulat aici).</li>
-          <li><b>Peste capacitate:</b> se alimentează mai mulți litri decât încap în rezervor.</li>
-          <li><b>Litri prea mulți pentru km:</b> litrii de pe bon raportați la km parcurși de la alimentarea anterioară dau cu peste 25% peste media de 30 de zile a camionului.</li>
-          <li><b>Consum peste normal:</b> peste 15% față de normalul camionului; avertizare, nu neapărat furt.</li>
+      <PageHead title={t(loc, "alerts.title", { n: alerts.length })} />
+      <Card title={t(loc, "alerts.rules")}>
+        <ul className="grid sm:grid-cols-2 gap-2 text-sm">
+          {RULES.map((r) => <li key={r} className="rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3"><b>{ruleTitle(loc, r)}</b><br /><span className="text-slate-600 dark:text-slate-300">{t(loc, `ruledesc.${r}` as MsgKey, DESC_VARS[r])}</span></li>)}
         </ul>
       </Card>
-      {rules.map((r) => {
+      {RULES.map((r) => {
         const list = alerts.filter((a) => a.rule === r);
-        if (!list.length) return null;
-        return (
-          <Card key={r}>
-            <h2 className="font-bold">{RULE_LABEL[r]} ({list.length})</h2>
-            <ul>{list.map((a) => <AlertItem key={a.id} a={a} />)}</ul>
+        return list.length ? (
+          <Card key={r} title={`${ruleTitle(loc, r)} (${list.length})`}>
+            <div className="space-y-2.5">{list.map((a) => <AlertCard key={a.id} a={a} loc={loc} />)}</div>
           </Card>
-        );
+        ) : null;
       })}
     </div>
   );

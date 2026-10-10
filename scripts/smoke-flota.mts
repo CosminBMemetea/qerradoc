@@ -1,5 +1,5 @@
 // smoke:flota — fiecare regulă de furt trebuie să se declanșeze pe datele demo, plus cazuri normale.
-import { computeAlerts } from "../src/lib/flota/rules";
+import { computeAlerts, whyText } from "../src/lib/flota/rules";
 import { TRUCKS } from "../src/lib/flota/data";
 import { fleetData, alerts as serverAlerts } from "../src/lib/flota/repo";
 const d = await fleetData();
@@ -11,7 +11,7 @@ for (const [rule, truck] of need) {
   const hit = alerts.filter((a) => a.rule === rule && a.truckId === truck);
   console.log(`${hit.length ? "PASS" : "FAIL"} ${rule} pe ${truck} (${hit.length})`);
   if (!hit.length) fail++;
-  if (hit.some((a) => !a.why || a.why.length < 40)) { console.log(`FAIL ${rule}: lipsește explicația`); fail++; }
+  if (hit.some((a) => ["ro", "en", "pl"].some((l) => whyText(l as "ro", a).length < 40 || /\{\w+\}/.test(whyText(l as "ro", a))))) { console.log(`FAIL ${rule}: lipsește explicația`); fail++; }
 }
 const clean = TRUCKS.filter((t) => !alerts.some((a) => a.truckId === t.id));
 console.log(`${clean.length >= 3 ? "PASS" : "FAIL"} camioane fără alerte: ${clean.map((t) => t.plate).join(", ")}`);

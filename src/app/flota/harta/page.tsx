@@ -1,10 +1,14 @@
 import MapReplay from "@/components/flota/MapReplay";
+import { PageHead } from "@/components/flota/ui";
+import { DEMO_DAY } from "@/lib/flota/data";
+import { fmtDate, t } from "@/lib/flota/i18n";
+import { getLocale } from "@/lib/flota/i18n/server";
 export default function Harta() {
+  const loc = getLocale();
   return (
-    <div className="space-y-3">
-      <h1 className="text-2xl font-bold">Hartă flotă</h1>
-      <p className="text-sm text-slate-500">Poziții simulate pentru 15 octombrie 2026. Mută cursorul sau apasă „Redă ziua”; apasă pe un camion pentru detalii.</p>
-      <MapReplay />
+    <div>
+      <PageHead title={t(loc, "map.title")} subtitle={t(loc, "map.subtitle", { day: fmtDate(loc, DEMO_DAY, true) })} />
+      <MapReplay locale={loc} />
     </div>
   );
 }

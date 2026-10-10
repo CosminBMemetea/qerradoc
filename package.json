@@ -21,13 +21,16 @@
     "smoke:pack": "npx --yes tsx scripts/smoke-pilot-pack.mts",
     "smoke:pdf-dates": "npx --yes tsx scripts/smoke-pdf-dates.mts",
     "smoke:heuristic": "npx --yes tsx scripts/smoke-heuristic.mts",
-    "smoke:flota": "npx --yes tsx scripts/smoke-flota.mts"
+    "smoke:flota": "npx --yes tsx scripts/smoke-flota.mts",
+    "smoke:flota-i18n": "npx --yes tsx scripts/smoke-flota-i18n.mts",
+    "smoke:flota-ask": "npx --yes tsx scripts/smoke-flota-ask.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
     "idb-keyval": "^6.3.0",
     "jspdf": "^4.2.1",
     "leaflet": "1.9",
+    "leaflet.markercluster": "1.5",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
@@ -39,6 +42,7 @@
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@types/leaflet": "^1.9.22",
+    "@types/leaflet.markercluster": "^1.5.6",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

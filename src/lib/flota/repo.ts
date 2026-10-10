@@ -7,7 +7,11 @@ import { computeAlerts, type Alert, type FleetData } from "./rules";
 export interface TrackPoint { min: number; lat: number; lng: number; status: Status; place: string }
 export interface DriverPing { id: string; driver: string; plate: string; lat: number; lng: number; accuracyM: number; at: string; demo: boolean }
 
+export interface DriverFill { id: string; driver: string; plate: string; litres: number; km: number; station: string; photo: { name: string; type: string; size: number } | null; at: string }
+
 export interface FleetRepository {
+  addDriverFill(f: Omit<DriverFill, "id" | "at">): Promise<DriverFill>;
+  driverFills(plate?: string): Promise<DriverFill[]>;
   trucks(): Promise<Truck[]>;
   fills(truckId?: string): Promise<FillUp[]>;
   levels(): Promise<Record<string, LevelPoint[] | null>>;
@@ -18,6 +22,13 @@ export interface FleetRepository {
 
 class DemoFleetRepository implements FleetRepository {
   private pings: DriverPing[] = []; // efemer: se pierde la repornirea funcției
+  private dfills: DriverFill[] = [];
+  async addDriverFill(f: Omit<DriverFill, "id" | "at">) {
+    const x = { ...f, id: Math.random().toString(36).slice(2, 10), at: new Date().toISOString() };
+    this.dfills = [x, ...this.dfills].slice(0, 200);
+    return x;
+  }
+  async driverFills(plate?: string) { return plate ? this.dfills.filter((f) => f.plate === plate) : this.dfills; }
   async trucks() { return TRUCKS; }
   async fills(truckId?: string) { return truckId ? FILLS.filter((f) => f.truckId === truckId) : FILLS; }
   async levels() { return Object.fromEntries(TRUCKS.map((t) => [t.id, levelSeries(t)])); }
