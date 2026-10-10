@@ -6,6 +6,7 @@
  */
 import type { CatalogClient, CatalogEquipment, ContentLocale, Fisa, Piesa, TipFisa } from "./types";
 import { EMPTY_PIESE, TIPURI } from "./types";
+import type { TruckExtraction } from "./truck";
 
 export type ExtractedPart = {
   denumire: string;
@@ -35,6 +36,8 @@ export type ExtractRequest = {
   text: string;
   locale: ContentLocale;
   hints?: ExtractHints;
+  /** "truck": Camioane sheets — vehicle is a truck; odometer km is not travel km. */
+  domain?: "truck";
 };
 
 /** Why the LLM path failed; returned to the client (not only logged). */
@@ -47,7 +50,7 @@ export type ExtractFailReason =
   | `http_${number}`;
 
 export type ExtractResponse =
-  | { ok: true; source: "llm"; model: string; data: Extraction; attempts?: string[]; raw?: { piese?: unknown } }
+  | { ok: true; source: "llm"; model: string; data: Extraction; attempts?: string[]; raw?: { piese?: unknown }; truck?: TruckExtraction }
   | {
       ok: false;
       error: "missing_key" | "bad_request" | "upstream" | "invalid_output";
@@ -173,9 +176,16 @@ const HINT_LABEL: Record<ContentLocale, { clients: string; models: string; note:
   },
 };
 
+const TRUCK_NOTE: Record<ContentLocale, string> = {
+  ro: "Context: fișă de service pentru CAMION (transport). Numărul de înmatriculare, VIN-ul și km la bord NU se pun în client/modelUtilaj/serie/deplasareKm (se extrag separat). deplasareKm = \"\". Piesele și manopera se completează ca de obicei.",
+  en: "Context: TRUCK service sheet (transport). The registration plate, VIN and odometer km do NOT go into client/modelUtilaj/serie/deplasareKm (extracted separately). deplasareKm = \"\". Parts and labour as usual.",
+  pl: "Kontekst: karta serwisowa CIĘŻARÓWKI (transport). Numer rejestracyjny, VIN i przebieg NIE trafiają do client/modelUtilaj/serie/deplasareKm (są wyodrębniane osobno). deplasareKm = \"\". Części i robocizna jak zwykle.",
+};
+
 export function buildExtractMessages(req: ExtractRequest) {
   const loc = req.locale;
   let system = PROMPTS[loc];
+  if (req.domain === "truck") system += `\n${TRUCK_NOTE[loc]}`;
   const clients = (req.hints?.clients || []).slice(0, EXTRACT_MAX_HINTS);
   const models = (req.hints?.models || []).slice(0, EXTRACT_MAX_HINTS);
   if (clients.length || models.length) {

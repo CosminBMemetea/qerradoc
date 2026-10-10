@@ -9,6 +9,7 @@ import {
   type ExtractResponse,
 } from "./ai-extract";
 import { parseWhatsAppText } from "./parse-text";
+import type { TruckExtraction } from "./truck";
 import { getCatalogClients, getCatalogEquipment } from "./db";
 
 export type VoiceFillResult = {
@@ -20,6 +21,8 @@ export type VoiceFillResult = {
    * offline | timeout | empty | missing_key | rate_limited | http_502 | invalid_output | …
    */
   reason?: string;
+  /** domain "truck": server-side traceable plate / VIN / km / checklist. */
+  truck?: TruckExtraction;
 };
 
 /** Server chain (retry + smaller model) finishes within ~19 s. */
@@ -43,7 +46,8 @@ function heuristicFilled(p: Partial<Fisa>): string[] {
  */
 export async function voiceFill(
   text: string,
-  locale: ContentLocale
+  locale: ContentLocale,
+  domain?: "truck"
 ): Promise<VoiceFillResult> {
   const trimmed = text.trim();
   let reason: string | undefined;
@@ -63,13 +67,14 @@ export async function voiceFill(
           text: trimmed,
           locale,
           hints: catalogHints(clients, equipment),
+          ...(domain ? { domain } : {}),
         }),
       });
       const json = (await res.json().catch(() => null)) as ExtractResponse | null;
       if (json && json.ok && extractionHasContent(json.data)) {
         const matched = applyCatalog(json.data, clients, equipment);
         const { patch, filled } = extractionToFisa(matched);
-        return { patch, filled, source: "llm" };
+        return { patch, filled, source: "llm", truck: json.truck };
       }
       reason = json
         ? json.ok

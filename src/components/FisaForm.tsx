@@ -17,7 +17,8 @@ import {
   symbolForCurrency,
   type CurrencyCode,
 } from "@/lib/currency";
-import { getCatalogClients, getCatalogEquipment } from "@/lib/db";
+import { getCatalogClients, getCatalogEquipment, getCatalogParts } from "@/lib/db";
+import type { CatalogPart } from "@/lib/truck";
 import { Field, inputCls, textareaCls } from "./Field";
 import DictateButton from "./DictateButton";
 import SignaturePad from "./SignaturePad";
@@ -39,9 +40,21 @@ function dropEdited(prev: Fisa, next: Fisa): Fisa {
 export default function FisaForm({
   fisa,
   onChange: onChangeRaw,
+  truckMode = false,
+  truckHeader,
+  afterReclamatie,
+  beforeSignatures,
 }: {
   fisa: Fisa;
   onChange: (f: Fisa) => void;
+  /** Camioane service sheet: hide machine-only fields (utilaj, travel, …). */
+  truckMode?: boolean;
+  /** Rendered after the sheet number (truck plate / VIN / km). */
+  truckHeader?: React.ReactNode;
+  /** Rendered after the complaint (truck "Constatare"). */
+  afterReclamatie?: React.ReactNode;
+  /** Rendered before the signature pads (truck "checked by" confirmation). */
+  beforeSignatures?: React.ReactNode;
 }) {
   const { t } = useI18n();
   const onChange = (next: Fisa) => onChangeRaw(dropEdited(fisa, next));
@@ -54,6 +67,8 @@ export default function FisaForm({
   const currencyLabelId = useId();
   const [clients, setClients] = useState<CatalogClient[]>([]);
   const [equipment, setEquipment] = useState<CatalogEquipment[]>([]);
+  const [partsCat, setPartsCat] = useState<CatalogPart[]>([]);
+  const partsListId = useId();
   const contentLocale = resolveContentLocale(fisa);
   const currency = resolveCurrency(fisa);
   const currencySym = symbolForCurrency(currency);
@@ -67,6 +82,9 @@ export default function FisaForm({
         setEquipment(e);
       }
     );
+    getCatalogParts()
+      .then((p) => !cancelled && setPartsCat(p))
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -154,6 +172,7 @@ export default function FisaForm({
         </div>
       )}
 
+      {!truckMode && (
       <Field label={t("form.tip")} hint={t("hint.tip")}>
         <div
           className={`grid grid-cols-2 gap-2 rounded-2xl ${aiSet.has("tip") ? "p-1 ring-2 ring-indigo-300/80 dark:ring-indigo-700/70" : ""}`}
@@ -175,6 +194,7 @@ export default function FisaForm({
           ))}
         </div>
       </Field>
+      )}
 
       <Field label={t("form.nrFisa")}>
         <input
@@ -185,6 +205,9 @@ export default function FisaForm({
         />
       </Field>
 
+      {truckHeader}
+
+      {!truckMode && (
       <Field label={t("form.proprietar")}>
         <input
           className={inputCls}
@@ -192,6 +215,7 @@ export default function FisaForm({
           onChange={(e) => set("proprietar", e.target.value)}
         />
       </Field>
+      )}
 
       <Field label={t("form.client")} hint={t("hint.client")}>
         <input
@@ -228,6 +252,7 @@ export default function FisaForm({
         </datalist>
       </Field>
 
+      {!truckMode && (
       <Field label={t("form.locatie")} hint={t("hint.locatie")}>
         <input
           className={inputCls + hl("locatie")}
@@ -236,7 +261,9 @@ export default function FisaForm({
           onChange={(e) => set("locatie", e.target.value)}
         />
       </Field>
+      )}
 
+      {!truckMode && (
       <Field label={t("form.modelUtilaj")} hint={t("hint.modelUtilaj")}>
         <input
           className={inputCls + hl("modelUtilaj")}
@@ -288,7 +315,9 @@ export default function FisaForm({
           ))}
         </datalist>
       </Field>
+      )}
 
+      {!truckMode && (
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("form.serie")}>
           <input
@@ -308,6 +337,7 @@ export default function FisaForm({
           />
         </Field>
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <Field label={t("form.manoperaOre")}>
@@ -319,6 +349,7 @@ export default function FisaForm({
             onChange={(e) => set("manoperaOre", e.target.value)}
           />
         </Field>
+      {!truckMode && (
         <Field label={t("form.deplasareKm")}>
           <input
             className={inputCls + hl("deplasareKm")}
@@ -328,8 +359,10 @@ export default function FisaForm({
             onChange={(e) => set("deplasareKm", e.target.value)}
           />
         </Field>
+      )}
       </div>
 
+      {!truckMode && (
       <Field label={t("form.deplasareDaNu")}>
         <div
           className={`flex gap-2 rounded-2xl ${aiSet.has("deplasareDaNu") ? "p-1 ring-2 ring-indigo-300/80 dark:ring-indigo-700/70" : ""}`}
@@ -356,6 +389,7 @@ export default function FisaForm({
           ))}
         </div>
       </Field>
+      )}
 
       <Field label={t("form.reclamatie")} hint={t("hint.reclamatie")}>
         <textarea
@@ -373,6 +407,8 @@ export default function FisaForm({
           />
         </div>
       </Field>
+
+      {afterReclamatie}
 
       {fisa.photoDataUrl && (
         <div className="rounded-2xl overflow-hidden border border-border mb-4">
@@ -453,6 +489,15 @@ export default function FisaForm({
             {t("form.currencyHint")}
           </p>
         </div>
+        {partsCat.length > 0 && (
+          <datalist id={partsListId}>
+            {partsCat.map((c) => (
+              <option key={c.denumire} value={c.denumire}>
+                {[c.cod, c.pret].filter(Boolean).join(" · ") || undefined}
+              </option>
+            ))}
+          </datalist>
+        )}
         <div className="space-y-3">
           {fisa.piese.slice(0, 15).map((p, idx) => (
             <div
@@ -467,7 +512,19 @@ export default function FisaForm({
                 className={`${inputCls} mb-2`}
                 placeholder={t("form.denumire")}
                 value={p.denumire}
-                onChange={(e) => setPiesa(idx, "denumire", e.target.value)}
+                list={partsCat.length ? partsListId : undefined}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const hit = partsCat.find((c) => c.denumire.toLowerCase() === v.trim().toLowerCase());
+                  if (!hit) return setPiesa(idx, "denumire", v);
+                  const piese = fisa.piese.map((x, i) =>
+                    i === idx
+                      ? { ...x, denumire: hit.denumire, cod: x.cod || hit.cod || "", pretEur: x.pretEur || hit.pret || "", cantitate: x.cantitate || "1" }
+                      : x
+                  );
+                  onChange({ ...fisa, piese });
+                }}
+                autoComplete="off"
               />
               <div className="grid grid-cols-3 gap-2">
                 <input
@@ -497,6 +554,7 @@ export default function FisaForm({
       </div>
 
       <div className="grid grid-cols-1 gap-1">
+      {!truckMode && (
         <Field label={t("form.dataAnuntarii")} hint={t("hint.dates")}>
           <DatePicker
             label={t("form.dataAnuntarii")}
@@ -504,6 +562,7 @@ export default function FisaForm({
             onChange={(v) => set("dataAnuntarii", v)}
           />
         </Field>
+      )}
         <Field label={t("form.dataInterventiei")}>
           <DatePicker
             label={t("form.dataInterventiei")}
@@ -530,6 +589,7 @@ export default function FisaForm({
         </div>
       </Field>
 
+      {!truckMode && (
       <Field label={t("form.motiveInlocuire")} hint={t("hint.motiveInlocuire")}>
         <textarea
           className={textareaCls}
@@ -538,6 +598,9 @@ export default function FisaForm({
           onChange={(e) => set("motiveInlocuire", e.target.value)}
         />
       </Field>
+      )}
+
+      {beforeSignatures}
 
       <Field label={t("form.semnaturaClient")} hint={t("hint.semnaturi")}>
         <input

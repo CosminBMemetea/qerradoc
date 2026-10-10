@@ -7,6 +7,7 @@ import {
 } from "@/lib/ai-extract";
 import { FALLBACK_MODEL, PRIMARY_MODEL, groqExtract } from "@/lib/groq-extract";
 import type { ContentLocale } from "@/lib/types";
+import { extractTruckFields } from "@/lib/truck";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -43,7 +44,11 @@ export async function POST(req: NextRequest) {
     text,
     locale,
     hints: { clients: cleanList(hintsRaw.clients), models: cleanList(hintsRaw.models) },
+    ...(body.domain === "truck" ? { domain: "truck" as const } : {}),
   };
+  // Camioane: plate / VIN / odometer / checklist are extracted deterministically
+  // (only what is literally in the text) — never by the model.
+  const truck = request.domain === "truck" ? extractTruckFields(text) : undefined;
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) return reply({ ok: false, error: "missing_key", reason: "missing_key" }, 503);
@@ -62,7 +67,8 @@ export async function POST(req: NextRequest) {
     const raw = debugAllowed && wantRaw && r.raw && typeof r.raw === "object"
       ? { piese: (r.raw as { piese?: unknown }).piese }
       : undefined;
-    return reply({ ok: true, source: "llm", model: r.model, data: r.data, attempts: r.attempts, ...(raw ? { raw } : {}) });
+    const data = truck ? { ...r.data, deplasareKm: "" } : r.data;
+    return reply({ ok: true, source: "llm", model: r.model, data, attempts: r.attempts, ...(truck ? { truck } : {}), ...(raw ? { raw } : {}) });
   }
   return reply(
     {

@@ -1,5 +1,6 @@
 import { defaultCurrencyForLocale, type CurrencyCode } from "./currency";
 import { localIsoDate } from "./date-format";
+import type { TruckData } from "./truck";
 
 export type { CurrencyCode } from "./currency";
 
@@ -86,6 +87,8 @@ export interface Fisa {
    * highlighted in the form until the user edits that field.
    */
   aiFilled?: string[];
+  /** Camioane / Transport sheets (driver check, truck service, damage report). */
+  truck?: TruckData;
   /** ISO time the PDF was sent to the client via "Trimite clientului". */
   sentAt?: string;
   createdAt: string;

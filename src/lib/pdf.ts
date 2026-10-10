@@ -12,6 +12,7 @@ import {
 } from "./currency";
 import { ensurePdfCompatibleImage } from "./logo";
 import { docDate, docStamp } from "./date-format";
+import { generateTruckPdf } from "./pdf-truck";
 
 export type PdfLocale = "ro" | "en" | "pl";
 
@@ -284,6 +285,8 @@ export async function generateFisaPdf(
   locale: PdfLocale | string = "ro"
 ): Promise<Blob> {
   const loc = resolveLocale(locale);
+  // Camioane / Transport sheets have their own layout.
+  if (fisa.truck) return generateTruckPdf(fisa, settings, loc);
   const L = LABELS[loc];
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   await embedUnicodeFont(doc);

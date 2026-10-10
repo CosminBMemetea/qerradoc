@@ -5,9 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/AppShell";
 import BigButton from "@/components/BigButton";
 import FisaForm from "@/components/FisaForm";
+import TruckForm from "@/components/TruckForm";
+import { truckLabels } from "@/lib/truck";
 import SendToClient from "@/components/SendToClient";
 import { canSendToClient } from "@/lib/send-to-client";
-import { getFisa, saveFisa, deleteFisa, upsertCatalogFromFisa } from "@/lib/db";
+import { getFisa, saveFisa, deleteFisa, upsertCatalogFromFisa, upsertTruckFromFisa } from "@/lib/db";
 import type { Fisa } from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 
@@ -27,7 +29,7 @@ function voiceWhyKey(why: string) {
 export default function FisaEditor({ id }: { id: string }) {
   const search = useSearchParams();
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const selfHref = typeof window !== "undefined" && window.location.pathname === "/fise/edit" ? `/fise/edit?id=${encodeURIComponent(id)}` : `/fise/${id}`;
   const mustReview = search.get("review") === "1";
   const fromExcel = search.get("from") === "excel";
@@ -58,7 +60,8 @@ export default function FisaEditor({ id }: { id: string }) {
   async function persist(next: Fisa): Promise<Fisa> {
     await saveFisa(next);
     try {
-      await upsertCatalogFromFisa(next);
+      if (next.truck) await upsertTruckFromFisa(next);
+      else await upsertCatalogFromFisa(next);
     } catch {
       /* catalog learn is best-effort */
     }
@@ -68,6 +71,7 @@ export default function FisaEditor({ id }: { id: string }) {
 
   async function onSave() {
     if (!fisa) return;
+    if (fisa.truck && !fisa.truck.verifiedBy) return;
     await persist({ ...fisa, reviewed: true });
     setSaved(true);
   }
@@ -95,6 +99,10 @@ export default function FisaEditor({ id }: { id: string }) {
       </AppShell>
     );
   }
+
+  // Camioane: review is mandatory — no save / PDF / send until "checked" is ticked.
+  const truckBlocked = !!fisa.truck && !fisa.truck.verifiedBy;
+  const TL = truckLabels(locale);
 
   return (
     <AppShell
@@ -145,13 +153,22 @@ export default function FisaEditor({ id }: { id: string }) {
           )}
         </div>
       )}
-      <FisaForm fisa={fisa} onChange={setFisa} />
+      {fisa.truck ? (
+        <TruckForm fisa={fisa} onChange={setFisa} />
+      ) : (
+        <FisaForm fisa={fisa} onChange={setFisa} />
+      )}
 
       <div className="sticky bottom-0 z-10 mt-6 bg-background/95 backdrop-blur-sm pt-3 pb-3 -mx-1 px-1">
-        {canSendToClient(fisa) ? (
+        {truckBlocked && (
+          <p className="mb-2 text-xs text-amber-900 dark:text-amber-200 text-center" data-testid="truck-blocked">
+            {TL.verifyNeeded}
+          </p>
+        )}
+        {canSendToClient(fisa) && !truckBlocked ? (
           <SendToClient fisa={fisa} persist={persist} />
         ) : (
-          <BigButton onClick={onSave} variant="success">
+          <BigButton onClick={onSave} variant="success" disabled={truckBlocked}>
             {t("edit.save")}
           </BigButton>
         )}
@@ -162,7 +179,7 @@ export default function FisaEditor({ id }: { id: string }) {
         )}
       </div>
       <div className="mt-3 space-y-3">
-        {canSendToClient(fisa) ? (
+        {canSendToClient(fisa) && !truckBlocked ? (
           <BigButton onClick={onSave} variant="success">
             {t("edit.save")}
           </BigButton>
@@ -171,7 +188,7 @@ export default function FisaEditor({ id }: { id: string }) {
         )}
         <BigButton
           href={`/fise/${fisa.id}/pdf`}
-          disabled={!fisa.reviewed && mustReview}
+          disabled={(!fisa.reviewed && mustReview) || truckBlocked}
           variant="secondary"
         >
           {t("edit.pdf")}

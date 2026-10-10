@@ -11,6 +11,7 @@ import type {
 } from "./types";
 import { resolveContentLocale } from "./types";
 import { firmExample } from "./defaults";
+import { mergeTrucks, normPlate, type CatalogPart, type CatalogTruck } from "./truck";
 
 /** Soft-migrate / normalize contentLocale (legacy missing → RO; PL/pl-PL → pl). */
 function withContentLocale(f: Fisa): Fisa {
@@ -259,4 +260,36 @@ export async function upsertCatalogFromFisa(fisa: {
       clientName: client || undefined,
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// Camioane / Transport: truck catalog (keyed by normalized plate) + parts
+// ---------------------------------------------------------------------------
+
+const CATALOG_TRUCKS_KEY = "catalog-trucks";
+const CATALOG_PARTS_KEY = "catalog-parts";
+
+export async function getCatalogTrucks(): Promise<CatalogTruck[]> {
+  const list = await get<CatalogTruck[]>(CATALOG_TRUCKS_KEY);
+  return Array.isArray(list) ? list : [];
+}
+export async function saveCatalogTrucks(list: CatalogTruck[]): Promise<void> {
+  await set(CATALOG_TRUCKS_KEY, list);
+}
+export async function getCatalogParts(): Promise<CatalogPart[]> {
+  const list = await get<CatalogPart[]>(CATALOG_PARTS_KEY);
+  return Array.isArray(list) ? list : [];
+}
+export async function saveCatalogParts(list: CatalogPart[]): Promise<void> {
+  await set(CATALOG_PARTS_KEY, list);
+}
+
+/** After saving a truck fișă: learn plate/VIN/model/driver into the truck catalog. */
+export async function upsertTruckFromFisa(fisa: Fisa): Promise<void> {
+  const t = fisa.truck;
+  if (!t || !normPlate(t.plate)) return;
+  const list = await getCatalogTrucks();
+  await saveCatalogTrucks(
+    mergeTrucks(list, [{ plate: t.plate, vin: t.vin, model: t.model, driver: t.driver, clientName: fisa.client }])
+  );
 }
