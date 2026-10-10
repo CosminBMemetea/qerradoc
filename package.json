@@ -20,20 +20,25 @@
     "pilot-pack:example": "npx --yes tsx scripts/make-pilot-pack.mts --firm \"CleanTech Service SRL\" --logo docs/pilot/example-logo.png --excel docs/pilot/example-catalog.xlsx --excel docs/fixture-fisa-ro-filled.xlsx --tip Revizie --tech \"Andrei Pop\" --tech \"Mihai Ionescu\" --tech \"Elena Dumitru\" --cui RO40123456 --phone \"+40 722 000 111\" --address \"Brașov, str. Industriilor 5\" --locale ro --date 2026-09-25T09:00:00Z --out docs/pilot",
     "smoke:pack": "npx --yes tsx scripts/smoke-pilot-pack.mts",
     "smoke:pdf-dates": "npx --yes tsx scripts/smoke-pdf-dates.mts",
-    "smoke:heuristic": "npx --yes tsx scripts/smoke-heuristic.mts"
+    "smoke:heuristic": "npx --yes tsx scripts/smoke-heuristic.mts",
+    "smoke:flota": "npx --yes tsx scripts/smoke-flota.mts"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
     "idb-keyval": "^6.3.0",
     "jspdf": "^4.2.1",
+    "leaflet": "1.9",
     "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
+    "react-leaflet": "^4.2.1",
+    "recharts": "^2.15.4",
     "uuid": "^14.0.2",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
